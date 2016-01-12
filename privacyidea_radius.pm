@@ -210,7 +210,7 @@ foreach my $file (@CONFIG_FILES) {
 	    $Config->{URL} = $cfg_file->val("Default", "URL");
 	    $Config->{REALM}   = $cfg_file->val("Default", "REALM");
 	    $Config->{RESCONF} = $cfg_file->val("Default", "RESCONF");
-	    $Config->{Debug}   = $cfg_file->val("Default", "Debug");
+	    $Config->{Debug}   = $cfg_file->val("Default", "DEBUG");
 	    $Config->{SSL_CHECK} = $cfg_file->val("Default", "SSL_CHECK");
 	}
 }
@@ -231,6 +231,7 @@ sub authenticate {
     if ( $Config->{Debug} =~ /true/i ) {
         $debug = true;
     }
+    &radiusd::radlog( Info, "Debugging config: ". $Config->{Debug});
 
     my $check_ssl = false;
     if ( $Config->{SSL_CHECK} =~ /true/i ) {
@@ -326,18 +327,24 @@ sub authenticate {
     $RAD_REPLY{'Reply-Message'} = "privacyIDEA server denied access!";
     my $g_return = RLM_MODULE_REJECT;
 
-    if ( $response->is_success ) {
-        # This was an OK 200 response
+    if ( !$response->is_success ) {
+        # This was NO OK 200 response
+        my $status = $response->status_line;
+        &radiusd::radlog( Info, "privacyIDEA request failed: $status" );
+        $RAD_REPLY{'Reply-Message'} = "privacyIDEA request failed: $status";
+        $g_return = RLM_MODULE_FAIL;
+    }
+    try {
         my $decoded = decode_json( $content );
         my $message = $decoded->{detail}{message};
         if ( $decoded->{result}{value} ) {
             &radiusd::radlog( Info, "privacyIDEA access granted" );
             $RAD_REPLY{'Reply-Message'} = "privacyIDEA access granted";
-	    $RAD_REPLY{'privacyIDEA-Serial'} = $decoded->{detail}{serial};
+	        $RAD_REPLY{'privacyIDEA-Serial'} = $decoded->{detail}{serial};
             $g_return = RLM_MODULE_OK;
         }
         elsif ( $decoded->{result}{status} ) {
-
+            &radiusd::radlog( Info, "privacyIDEA Result status is true!" );
             $RAD_REPLY{'Reply-Message'} = $decoded->{detail}{message};
             if ( $decoded->{detail}{transaction_id} ) {
                 ## we are in challenge response mode:
@@ -348,7 +355,7 @@ sub authenticate {
                 ## 5. reply ok or reject
                 $RAD_REPLY{'State'} = $decoded->{detail}{transaction_id};
                 $RAD_CHECK{'Response-Packet-Type'} = "Access-Challenge";
-		$RAD_REPLY{'privacyIDEA-Serial'} = $decoded->{detail}{serial};
+		        $RAD_REPLY{'privacyIDEA-Serial'} = $decoded->{detail}{serial};
                 $g_return  = RLM_MODULE_HANDLED;
             } else {
                 &radiusd::radlog( Info, "privacyIDEA access denied" );
@@ -356,14 +363,17 @@ sub authenticate {
                 $g_return = RLM_MODULE_REJECT;
             }
         }
+        elsif ( !$decoded->{result}{status}) {
+            &radiusd::radlog( Info, "privacyIDEA Result status is false!" );
+            $RAD_REPLY{'Reply-Message'} = $decoded->{result}{error}{message};
+            &radiusd::radlog( Info, "privacyIDEA access denied" );
+            #$RAD_REPLY{'Reply-Message'} = "privacyIDEA access denied";
+            $g_return = RLM_MODULE_REJECT;
+        }
+    } catch {
+        &radiusd::radlog( Info, "Can not parse response from privacyIDEA." );
+    };
 
-
-    } else {
-        my $status = $response->status_line;
-        &radiusd::radlog( Info, "privacyIDEA request failed: $status" );
-        $RAD_REPLY{'Reply-Message'} = "privacyIDEA request failed: $status";
-        $g_return = RLM_MODULE_FAIL;
-    }
     &radiusd::radlog( Info, "return $ret_hash->{$g_return}" );
     return $g_return;
 
