@@ -1,6 +1,9 @@
 #
 #    privacyIDEA, fork of LinOTP (radius_linotp.pm)
 #
+#    2016-08-13 Cornelius Kölbel <cornelius.koelbel@netknights.it>
+#               Add user-agent to be displayed in
+#               privacyIDEA Client Applicaton Type
 #    2015-10-10 Cornelius Kölbel <cornelius.koelbel@nektnights.it>
 #               Add privacyIDEA-Serial to the response.
 #    2015-10-09 Cornelius Kölbel <cornelius.koelbel@netknights.it>
@@ -310,13 +313,15 @@ sub authenticate {
     }
 
     my $ua     = LWP::UserAgent->new();
+    # Set the user-agent to be fetched in privacyIDEA Client Application Type
+    $ua->agent("FreeRADIUS");
 	if ($check_ssl == false) {
 		try {
 			# This is only availble with with LWP version 6
-        		&radiusd::radlog( Info, "Not verifying SSL certificate!" );
+        	&radiusd::radlog( Info, "Not verifying SSL certificate!" );
 			$ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0x00 );
 		} catch {
-		        &radiusd::radlog( Error, "ssl_opts only supported with LWP 6. error: $@" );
+            &radiusd::radlog( Error, "ssl_opts only supported with LWP 6. error: $@" );
 		}
 	}
     my $response = $ua->post( $URL, \%params );
