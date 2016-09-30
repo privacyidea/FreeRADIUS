@@ -1,6 +1,8 @@
 #
 #    privacyIDEA, fork of LinOTP (radius_linotp.pm)
 #
+#    2016-09-30 Cornelius Kölbel <cornelius.koelbel@netknights.it>
+#               Add attribute mapping
 #    2016-08-13 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               Add user-agent to be displayed in
 #               privacyIDEA Client Applicaton Type
@@ -195,6 +197,7 @@ use constant Acct  => 6;
 our $CONFIG_FILE = "";
 our @CONFIG_FILES = ("/etc/privacyidea/rlm_perl.ini", "/etc/freeradius/rlm_perl.ini", "/opt/privacyIDEA/rlm_perl.ini");
 our $Config = {};
+our $Mapping = {};
 our $cfg_file;
 
     $Config->{FSTAT} = "not found!";
@@ -215,7 +218,43 @@ foreach my $file (@CONFIG_FILES) {
 	    $Config->{RESCONF} = $cfg_file->val("Default", "RESCONF");
 	    $Config->{Debug}   = $cfg_file->val("Default", "DEBUG");
 	    $Config->{SSL_CHECK} = $cfg_file->val("Default", "SSL_CHECK");
+	    
+
+	}	
+}
+
+sub mapResponse {
+	# This function maps the Mapping sections in rlm_perl.ini
+	# to RADIUS Attributes.
+	my $decoded = shift;
+	my %radReply;
+	my $radiusattribute;
+	my $topnode;
+	foreach my $group ($cfg_file->Groups) {
+		#print "Gruppe: $group\n";
+		if ("Mapping" == $group) {
+			foreach my $member ($cfg_file->GroupMembers($group)) {
+				#print "Member: $member\n";
+				foreach my $key ($cfg_file->Parameters($member)){
+					#print $key."\n";
+					$radiusattribute = $cfg_file->val($member, $key);
+					#print $radiusattribute."\n";					
+					$member =~/\w*\ (\w*)/;
+					$topnode = $1;
+					&radiusd::radlog( Info, "Map: $topnode : $key -> $radiusattribute");
+					$radReply{$radiusattribute} = $decoded->{detail}{$topnode}{$key};
+				};
+			}
+		}
 	}
+	
+	foreach my $key ($cfg_file->Parameters("Mapping")) {
+		$radiusattribute = $cfg_file->val("Mapping", $key);
+		&radiusd::radlog( Info, "Map: $key -> $radiusattribute");
+		$radReply{$radiusattribute} = $decoded->{detail}{$key};
+	}
+	
+	return %radReply;
 }
 
 # Function to handle authenticate
@@ -344,8 +383,9 @@ sub authenticate {
         my $message = $decoded->{detail}{message};
         if ( $decoded->{result}{value} ) {
             &radiusd::radlog( Info, "privacyIDEA access granted" );
-            $RAD_REPLY{'Reply-Message'} = "privacyIDEA access granted";
-	        $RAD_REPLY{'privacyIDEA-Serial'} = $decoded->{detail}{serial};
+            $RAD_REPLY{'Reply-Message'} = "privacyIDEA access granted";            
+            # Add the response hash to the Radius Reply
+            %RAD_REPLY = ( %RAD_REPLY, mapResponse($decoded));
             $g_return = RLM_MODULE_OK;
         }
         elsif ( $decoded->{result}{status} ) {
@@ -360,7 +400,8 @@ sub authenticate {
                 ## 5. reply ok or reject
                 $RAD_REPLY{'State'} = $decoded->{detail}{transaction_id};
                 $RAD_CHECK{'Response-Packet-Type'} = "Access-Challenge";
-		        $RAD_REPLY{'privacyIDEA-Serial'} = $decoded->{detail}{serial};
+                # Add the response hash to the Radius Reply
+				%RAD_REPLY = ( %RAD_REPLY, mapResponse($decoded));
                 $g_return  = RLM_MODULE_HANDLED;
             } else {
                 &radiusd::radlog( Info, "privacyIDEA access denied" );
