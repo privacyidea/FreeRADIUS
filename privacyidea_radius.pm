@@ -352,6 +352,7 @@ sub authenticate {
     }
 
     my $ua     = LWP::UserAgent->new();
+    $ua->env_proxy;
     # Set the user-agent to be fetched in privacyIDEA Client Application Type
     $ua->agent("FreeRADIUS");
 	if ($check_ssl == false) {
