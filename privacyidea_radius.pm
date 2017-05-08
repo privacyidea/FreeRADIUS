@@ -206,6 +206,7 @@ our $cfg_file;
     $Config->{RESCONF} = "";
     $Config->{Debug}   = "FALSE";
     $Config->{SSL_CHECK} = "FALSE";
+    $Config->{TIMEOUT} = 10;
 
 
 foreach my $file (@CONFIG_FILES) {
@@ -218,7 +219,7 @@ foreach my $file (@CONFIG_FILES) {
 	    $Config->{RESCONF} = $cfg_file->val("Default", "RESCONF");
 	    $Config->{Debug}   = $cfg_file->val("Default", "DEBUG");
 	    $Config->{SSL_CHECK} = $cfg_file->val("Default", "SSL_CHECK");
-	    
+	    $Config->{TIMEOUT} = $cfg_file->val("Default", "TIMEOUT", 10);
 
 	}	
 }
@@ -279,6 +280,8 @@ sub authenticate {
     if ( $Config->{SSL_CHECK} =~ /true/i ) {
 		$check_ssl = true;
     }
+
+    my $timeout = $Config->{TIMEOUT};
 
     &radiusd::radlog( Info, "Default URL $URL " );
 
@@ -353,6 +356,8 @@ sub authenticate {
 
     my $ua     = LWP::UserAgent->new();
     $ua->env_proxy;
+    $ua->timeout($timeout);
+    &radiusd::radlog( Info, "Request timeout: $timeout " );
     # Set the user-agent to be fetched in privacyIDEA Client Application Type
     $ua->agent("FreeRADIUS");
 	if ($check_ssl == false) {
