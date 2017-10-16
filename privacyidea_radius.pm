@@ -1,6 +1,7 @@
 #
-#    privacyIDEA, fork of LinOTP (radius_linotp.pm)
-#
+#    privacyIDEA FreeRADIUS plugin
+#    2017-10-16 Cornelius Kölbel <cornelius.koelbel@netknights.it>
+#               Add Calling-Station-Id
 #    2016-09-30 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               Add attribute mapping
 #    2016-08-13 Cornelius Kölbel <cornelius.koelbel@netknights.it>
@@ -114,6 +115,8 @@ Access-Type 'scope1', this would look like:
   [Default]
   URL = https://localhost/validate/check
   REALM =  
+  CLIENTATTRIBUTE = Calling-Station-Id
+
   [scope1]
   URL = http://192.168.56.1:5001/validate/check
   REALM = mydefault
@@ -203,6 +206,7 @@ our $cfg_file;
     $Config->{FSTAT} = "not found!";
     $Config->{URL}     = 'https://127.0.0.1/validate/check';
     $Config->{REALM}   = '';
+    $Config->{CLIENTATTRIBUTE} = '';
     $Config->{RESCONF} = "";
     $Config->{Debug}   = "FALSE";
     $Config->{SSL_CHECK} = "FALSE";
@@ -220,7 +224,7 @@ foreach my $file (@CONFIG_FILES) {
 	    $Config->{Debug}   = $cfg_file->val("Default", "DEBUG");
 	    $Config->{SSL_CHECK} = $cfg_file->val("Default", "SSL_CHECK");
 	    $Config->{TIMEOUT} = $cfg_file->val("Default", "TIMEOUT", 10);
-
+            $Config->{CLIENTATTRIBUTE} = $cfg_file->val("Default", "CLIENTATTRIBUTE");
 	}	
 }
 
@@ -329,6 +333,11 @@ sub authenticate {
     }
     if ( exists( $RAD_REQUEST{'NAS-IP-Address'} ) ) {
         $params{"client"} = $RAD_REQUEST{'NAS-IP-Address'};
+    }
+    if (exists ( $Config->{CLIENTATTRIBUTE} ) ) {
+        if ( exists( $RAD_REQUEST{$Config->{CLIENTATTRIBUTE}} ) ) {
+            $params{"client"} = $RAD_REQUEST{$Config->{CLIENTATTRIBUTE}};
+        }
     }
     if ( length($REALM) > 0 ) {
         $params{"realm"} = $REALM;
