@@ -239,13 +239,10 @@ sub mapResponse {
 		#print "Gruppe: $group\n";
 		if ("Mapping" == $group) {
 			foreach my $member ($cfg_file->GroupMembers($group)) {
-				#print "Member: $member\n";
+				$member =~/\w*\ (\w*)/;
+				$topnode = $1;
 				foreach my $key ($cfg_file->Parameters($member)){
-					#print $key."\n";
 					$radiusattribute = $cfg_file->val($member, $key);
-					#print $radiusattribute."\n";					
-					$member =~/\w*\ (\w*)/;
-					$topnode = $1;
 					&radiusd::radlog( Info, "Map: $topnode : $key -> $radiusattribute");
 					$radReply{$radiusattribute} = $decoded->{detail}{$topnode}{$key};
 				};
