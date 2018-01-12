@@ -1,5 +1,8 @@
 #
 #    privacyIDEA FreeRADIUS plugin
+#    2018-01-12 Cornelius Kölbel <cornelius.koelbel@netknights.it>
+#               Substrings of multivalue user attributes can be added
+#               to the RADIUS response.
 #    2017-10-16 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               Add Calling-Station-Id
 #    2016-09-30 Cornelius Kölbel <cornelius.koelbel@netknights.it>
@@ -233,27 +236,52 @@ sub mapResponse {
 	# to RADIUS Attributes.
 	my $decoded = shift;
 	my %radReply;
-	my $radiusattribute;
 	my $topnode;
 	foreach my $group ($cfg_file->Groups) {
-		#print "Gruppe: $group\n";
-		if ("Mapping" == $group) {
-			foreach my $member ($cfg_file->GroupMembers($group)) {
-				$member =~/\w*\ (\w*)/;
-				$topnode = $1;
+		&radiusd::radlog( Info, "++++ Parsing group: $group\n");
+		foreach my $member ($cfg_file->GroupMembers($group)) {
+			&radiusd::radlog(Info, "+++++ Found member '$member'");
+			$member =~/(.*)\ (.*)/;
+			$topnode = $2;
+			if ($group eq "Mapping") {
 				foreach my $key ($cfg_file->Parameters($member)){
-					$radiusattribute = $cfg_file->val($member, $key);
-					&radiusd::radlog( Info, "Map: $topnode : $key -> $radiusattribute");
-					$radReply{$radiusattribute} = $decoded->{detail}{$topnode}{$key};
+					my $radiusAttribute = $cfg_file->val($member, $key);
+					&radiusd::radlog( Info, "++++++ Map: $topnode : $key -> $radiusAttribute");
+					$radReply{$radiusAttribute} = $decoded->{detail}{$topnode}{$key};
 				};
+			}
+			if ($group eq "Attribute") {
+				my $radiusAttribute = $topnode;
+				my $userAttribute = $cfg_file->val($member, "userAttribute");
+				my $regex = $cfg_file->val($member, "regex");
+				my $radiusValue = $cfg_file->val($member, "radiusValue");
+				&radiusd::radlog( Info, "++++++ Attribute: IF '$userAttribute' == '$regex' THEN '$radiusAttribute' = '$radiusValue'");
+				my $attributevalue = $decoded->{detail}{user}{$userAttribute};
+				my @values = ();
+				if (ref($attributevalue) eq "") {
+					&radiusd::radlog(Info, "+++++++ User attribute is a string: $attributevalue");
+					push(@values, $attributevalue);	
+				} 
+				if (ref($attributevalue) eq "ARRAY") {
+					&radiusd::radlog(Info, "+++++++ User attribute is a list: $attributevalue");
+					@values = @$attributevalue;
+				}
+				foreach my $value (@values) {
+					&radiusd::radlog(Info, "+++++++ trying to match $value");
+					if ($value =~ /$regex/) {
+						my $result = $1;
+						$radReply{$radiusAttribute} = $result;
+						&radiusd::radlog(Info, "++++++++ Result: $radiusAttribute -> $result");
+					}
+				}
 			}
 		}
 	}
 	
 	foreach my $key ($cfg_file->Parameters("Mapping")) {
-		$radiusattribute = $cfg_file->val("Mapping", $key);
-		&radiusd::radlog( Info, "Map: $key -> $radiusattribute");
-		$radReply{$radiusattribute} = $decoded->{detail}{$key};
+		my $radiusAttribute = $cfg_file->val("Mapping", $key);
+		&radiusd::radlog( Info, "+++ Map: $key -> $radiusAttribute");
+		$radReply{$radiusAttribute} = $decoded->{detail}{$key};
 	}
 	
 	return %radReply;
