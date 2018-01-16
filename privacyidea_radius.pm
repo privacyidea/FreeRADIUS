@@ -254,9 +254,18 @@ sub mapResponse {
 				my $radiusAttribute = $topnode;
 				my $userAttribute = $cfg_file->val($member, "userAttribute");
 				my $regex = $cfg_file->val($member, "regex");
-				my $radiusValue = $cfg_file->val($member, "radiusValue");
-				&radiusd::radlog( Info, "++++++ Attribute: IF '$userAttribute' == '$regex' THEN '$radiusAttribute' = '$radiusValue'");
-				my $attributevalue = $decoded->{detail}{user}{$userAttribute};
+				my $directory = $cfg_file->val($member, "dir");
+				my $prefix = $cfg_file->val($member, "prefix");
+				my $suffix = $cfg_file->val($member, "suffix");
+				&radiusd::radlog( Info, "++++++ Attribute: IF '$directory'->'$userAttribute' == '$regex' THEN '$radiusAttribute'");
+				my $attributevalue="";
+				if ($directory eq "") {
+					$attributevalue = $decoded->{detail}{$userAttribute};
+					&radiusd::radlog( Info, "++++++ no directory");
+				} else {
+					$attributevalue = $decoded->{detail}{user}{$userAttribute};
+					&radiusd::radlog( Info, "++++++ searching in directory $directory");
+				}
 				my @values = ();
 				if (ref($attributevalue) eq "") {
 					&radiusd::radlog(Info, "+++++++ User attribute is a string: $attributevalue");
@@ -270,8 +279,10 @@ sub mapResponse {
 					&radiusd::radlog(Info, "+++++++ trying to match $value");
 					if ($value =~ /$regex/) {
 						my $result = $1;
-						$radReply{$radiusAttribute} = $result;
-						&radiusd::radlog(Info, "++++++++ Result: $radiusAttribute -> $result");
+						$radReply{$radiusAttribute} = "$prefix$result$suffix";
+						&radiusd::radlog(Info, "++++++++ Result: Add RADIUS attribute $radiusAttribute = $result");
+					} else {
+						&radiusd::radlog(Info, "++++++++ Result: No match, no RADIUS attribute $radiusAttribute added.");
 					}
 				}
 			}
