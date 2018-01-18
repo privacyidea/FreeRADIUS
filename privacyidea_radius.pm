@@ -252,6 +252,11 @@ sub mapResponse {
 			}
 			if ($group eq "Attribute") {
 				my $radiusAttribute = $topnode;
+				# opional overwrite radiusAttribute
+				my $ra = $cfg_file->val($member, "radiusAttribute");
+				if ($ra ne "") {
+					$radiusAttribute = $ra;
+				}
 				my $userAttribute = $cfg_file->val($member, "userAttribute");
 				my $regex = $cfg_file->val($member, "regex");
 				my $directory = $cfg_file->val($member, "dir");
