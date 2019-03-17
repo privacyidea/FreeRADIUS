@@ -1,5 +1,7 @@
 #
 #    privacyIDEA FreeRADIUS plugin
+#    2019-03-17 Cornelius Kölbel <cornelius.koelbel@netknights.it>
+#               Add password splitting
 #    2018-01-12 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               Substrings of multivalue user attributes can be added
 #               to the RADIUS response.
@@ -214,6 +216,7 @@ our $cfg_file;
     $Config->{Debug}   = "FALSE";
     $Config->{SSL_CHECK} = "FALSE";
     $Config->{TIMEOUT} = 10;
+    $Config->{SPLIT_NULL_BYTE} = "FALSE";
 
 
 foreach my $file (@CONFIG_FILES) {
@@ -225,6 +228,7 @@ foreach my $file (@CONFIG_FILES) {
 	    $Config->{REALM}   = $cfg_file->val("Default", "REALM");
 	    $Config->{RESCONF} = $cfg_file->val("Default", "RESCONF");
 	    $Config->{Debug}   = $cfg_file->val("Default", "DEBUG");
+            $Config->{SPLIT_NULL_BYTE} = $cfg_file->val("Default", "SPLIT_NULL_BYTE");
 	    $Config->{SSL_CHECK} = $cfg_file->val("Default", "SSL_CHECK");
 	    $Config->{TIMEOUT} = $cfg_file->val("Default", "TIMEOUT", 10);
             $Config->{CLIENTATTRIBUTE} = $cfg_file->val("Default", "CLIENTATTRIBUTE");
@@ -370,7 +374,12 @@ sub authenticate {
         $params{"user"} = $RAD_REQUEST{'Stripped-User-Name'};
     }
     if ( exists( $RAD_REQUEST{'User-Password'} ) ) {
-        $params{"pass"} = $RAD_REQUEST{'User-Password'};
+        my $password = $RAD_REQUEST{'User-Password'};
+        if ( $Config->{SPLIT_NULL_BYTE} =~ /true/i ) {
+            my @p = split(/\0/, $password);
+            $password = @p[0];
+        }
+        $params{"pass"} = $password;
     }
     if ( exists( $RAD_REQUEST{'NAS-IP-Address'} ) ) {
         $params{"client"} = $RAD_REQUEST{'NAS-IP-Address'};
