@@ -19,18 +19,17 @@ SIGNING_KEY=53E66E1D2CABEFCDB1D3B83E106164552E8D8149
 clean:
 	rm -fr DEBUILD
 
+PACKNAME=privacyidea-radius
 BUILDDIR=DEBUILD/privacyidea-radius.org
 
 debianize:
 	make clean
 	mkdir -p ${BUILDDIR}/debian
 	cp -r ${SRCDIRS} ${SRCFILES} ${BUILDDIR} || true
-	# remove the requirement for pyOpenSSL otherwise we get a breaking dependency for trusty
-	cp copyright ${BUILDDIR}/debian/copyright
-	cp copyright ${BUILDDIR}/debian/privacyidea-radius.copyright
-	(cd DEBUILD; tar -zcf privacyidea-radius_${SHORT_VERSION}.orig.tar.gz --exclude=privacyidea-radius.org/debian privacyidea-radius.org)
-	(cd DEBUILD; tar -zcf privacyidea-radius_${VERSION}.orig.tar.gz --exclude=privacyidea-radius.org/debian privacyidea-radius.org)
-	(cd DEBUILD; tar -zcf privacyidea-radius_${VERSION_JESSIE}.orig.tar.gz --exclude=privacyidea-radius.org/debian privacyidea-radius.org)
+	cp copyright ${BUILDDIR}/debian/copyright	
+	(cd DEBUILD; tar -zcf ${PACKNAME}_${SHORT_VERSION}.orig.tar.gz --exclude=${PACKNAME}.org/debian ${PACKNAME}.org)
+	(cd DEBUILD; tar -zcf ${PACKNAME}_${VERSION}.orig.tar.gz --exclude=${PACKNAME}.org/debian ${PACKNAME}.org)
+	(cd DEBUILD; tar -zcf ${PACKNAME}_${VERSION_JESSIE}.orig.tar.gz --exclude=${PACKNAME}.org/debian ${PACKNAME}.org)
 
 builddeb-nosign:
 	make debianize
@@ -47,7 +46,7 @@ builddeb:
 	(cd ${BUILDDIR}; debuild --no-lintian)
 
 lintian:
-	(cd DEBUILD; lintian -i -I --show-overrides privacyidea-radius_*_amd64.changes)
+	(cd DEBUILD; lintian -i -I --show-overrides ${PACKNAME}_*_amd64.changes)
 
 ppa-dev:
 	make debianize
@@ -60,7 +59,7 @@ ppa-dev:
 	# bionic
 	sed -e s/"trusty) trusty; urgency"/"bionic) bionic; urgency"/g deploy/debian-ubuntu/changelog > ${BUILDDIR}/debian/changelog
 	(cd ${BUILDDIR}; debuild -sa -S)
-	dput ppa:privacyidea/privacyidea-dev DEBUILD/privacyidea-radius_${VERSION}*_source.changes
+	dput ppa:privacyidea/privacyidea-dev DEBUILD/${PACKNAME}_${VERSION}*_source.changes
 
 ppa:
 	make debianize
@@ -71,4 +70,4 @@ ppa:
 	# xenial
 	sed -e s/"trusty) trusty; urgency"/"xenial) xenial; urgency"/g deploy/debian-ubuntu/changelog > ${BUILDDIR}/debian/changelog
 	(cd ${BUILDDIR}; debuild -sa -S)
-	dput ppa:privacyidea/privacyidea DEBUILD/privacyidea-radius_${VERSION}*_source.changes
+	dput ppa:privacyidea/privacyidea DEBUILD/${PACKNAME}_${VERSION}*_source.changes
