@@ -466,11 +466,11 @@ sub authenticate {
             }
         }
         elsif ( !$decoded->{result}{status}) {
+            # An internal error occurred. We use the original return value RLM_MODULE_FAIL
             &radiusd::radlog( Info, "privacyIDEA Result status is false!" );
             $RAD_REPLY{'Reply-Message'} = $decoded->{result}{error}{message};
-            &radiusd::radlog( Info, "privacyIDEA access denied" );
-            #$RAD_REPLY{'Reply-Message'} = "privacyIDEA access denied";
-            $g_return = RLM_MODULE_REJECT;
+            &radiusd::radlog( Info, "privacyIDEA failed to handle the request" );
+            $g_return = RLM_MODULE_FAIL;
         }
     } catch {
         &radiusd::radlog( Info, "Can not parse response from privacyIDEA." );
