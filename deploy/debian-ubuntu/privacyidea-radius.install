@@ -1,0 +1,3 @@
+privacyidea_radius.pm	/usr/share/privacyidea/freeradius
+privacyidea		/etc/freeradius/sites-available
+rlm_perl.ini		/etc/privacyidea

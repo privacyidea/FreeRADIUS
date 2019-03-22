@@ -1,0 +1,15 @@
+Source: privacyidea-radius
+Maintainer: Cornelius Kölbel <cornelius@privacyidea.org>
+Section: net
+Priority: optional
+Build-Depends: debhelper (>= 7.4.3)
+Standards-Version: 3.9.6
+
+
+Package: privacyidea-radius
+Architecture: all
+Depends: ${misc:Depends}, libwww-perl, libconfig-inifiles-perl, libdata-dump-perl, libtry-tiny-perl, freeradius, libjson-perl, liblwp-protocol-https-perl
+Description: FreeRADIUS module for privacyIDEA, OTP authentication
+ This is a perl script, that is used in FreeRADIUS rlm_perl
+ to forward the authentication request from the RADIUS server
+ to privacyIDEA.
