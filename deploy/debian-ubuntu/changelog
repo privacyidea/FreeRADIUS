@@ -1,6 +1,6 @@
-privacyidea-radius (3.0~dev1-1trusty) trusty; urgency=medium
+privacyidea-radius (3.0-1trusty) trusty; urgency=medium
 
   * Splitt password at Null byte
   * Return RLM_MODULE_FAIL if response is not OK 200
 
- -- Cornelius Kölbel <cornelius.koelbel@netknights.it>  Wed, 20 Mar 2018 15:00:00 +0200
+ -- Cornelius Kölbel <cornelius.koelbel@netknights.it>  Fri, 22 Mar 2019 14:30:00 +0200
