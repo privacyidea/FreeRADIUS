@@ -1,3 +1,5 @@
-perl {
+perl PIperl {
+    # This perl module is registered as instance "PIperl" and can thus simply be used
+    # in a site configuration
     filename = /usr/share/privacyidea/freeradius/privacyidea_radius.pm
 }

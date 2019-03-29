@@ -1,6 +1,6 @@
 authorize {
         preprocess
-        perl
+        PIperl
                 if (ok || updated) {
                         update control {
                                 Auth-Type := Perl
@@ -17,7 +17,7 @@ authorize {
 
 authenticate {
         Auth-Type Perl {
-        perl
+        PIperl
         }
         digest
         unix
