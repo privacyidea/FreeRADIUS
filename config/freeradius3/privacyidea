@@ -1,0 +1,22 @@
+server {
+        authorize {
+                #files
+                perl
+                if (ok || updated) {
+                        update control {
+                                Auth-Type := Perl
+                        }
+                }
+        }
+        listen {
+                type = auth
+                ipaddr = *
+                port = 0
+        }
+        authenticate {
+                Auth-Type Perl {
+                        perl
+                }
+        }
+}
+
