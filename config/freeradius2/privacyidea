@@ -1,31 +1,36 @@
 authorize {
-	preprocess
-	digest
-	suffix
-	ntdomain
-	files
-	expiration
-	logintime
-	pap
+        preprocess
+        perl
+                if (ok || updated) {
+                        update control {
+                                Auth-Type := Perl
+                        }
+                }
+        digest
+        suffix
+        ntdomain
+        expiration
+        logintime
+        pap
 }
 
 
 authenticate {
-	Auth-Type Perl {
-	perl
-	}
-	digest
-	unix
+        Auth-Type Perl {
+        perl
+        }
+        digest
+        unix
 }
 
 
 preacct {
-	suffix
-	files
+        suffix
+        files
 }
 
 accounting {
-	detail
+        detail
 }
 
 

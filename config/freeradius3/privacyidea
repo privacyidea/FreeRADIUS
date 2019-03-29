@@ -1,6 +1,6 @@
 server {
         authorize {
-                files
+                #files
                 perl
                 if (ok || updated) {
                         update control {
