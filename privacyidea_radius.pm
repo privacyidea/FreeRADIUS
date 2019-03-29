@@ -150,6 +150,7 @@ use Config::IniFiles;
 use Data::Dump;
 use Try::Tiny;
 use JSON qw( decode_json );
+use Time::HiRes qw( gettimeofday tv_interval );
 
 
 # use ...
@@ -428,8 +429,11 @@ sub authenticate {
             &radiusd::radlog( Error, "ssl_opts only supported with LWP 6. error: $@" );
 		}
 	}
+    my $starttime = [gettimeofday];
     my $response = $ua->post( $URL, \%params );
     my $content  = $response->decoded_content();
+    my $elapsedtime = tv_interval($starttime);
+    &radiusd::radlog( Info, "elapsed time for privacyidea call: $elapsedtime" );
     if ( $debug == true ) {
         &radiusd::radlog( Debug, "Content $content" );
     }
