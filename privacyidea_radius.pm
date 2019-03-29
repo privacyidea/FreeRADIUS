@@ -273,7 +273,7 @@ sub mapResponse {
 					$attributevalue = $decoded->{detail}{$userAttribute};
 					&radiusd::radlog( Info, "++++++ no directory");
 				} else {
-					$attributevalue = $decoded->{detail}{user}{$userAttribute};
+					$attributevalue = $decoded->{detail}{$directory}{$userAttribute};
 					&radiusd::radlog( Info, "++++++ searching in directory $directory");
 				}
 				my @values = ();
