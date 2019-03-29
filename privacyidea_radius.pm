@@ -482,8 +482,14 @@ sub authenticate {
             # An internal error occurred. We use the original return value RLM_MODULE_FAIL
             &radiusd::radlog( Info, "privacyIDEA Result status is false!" );
             $RAD_REPLY{'Reply-Message'} = $decoded->{result}{error}{message};
+            &radiusd::radlog( Info, $decoded->{result}{error}{message});
+            my $errorcode = $decoded->{result}{error}{code};
+            if ($errorcode == 904) {
+                $g_return = RLM_MODULE_NOTFOUND;
+            } else {
+                $g_return = RLM_MODULE_FAIL;
+            }
             &radiusd::radlog( Info, "privacyIDEA failed to handle the request" );
-            $g_return = RLM_MODULE_FAIL;
         }
     } catch {
         &radiusd::radlog( Info, "Can not parse response from privacyIDEA." );
