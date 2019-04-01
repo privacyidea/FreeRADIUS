@@ -149,7 +149,7 @@ use LWP 6;
 use Config::IniFiles;
 use Data::Dump;
 use Try::Tiny;
-use JSON qw( decode_json );
+use JSON;
 use Time::HiRes qw( gettimeofday tv_interval );
 
 
@@ -448,7 +448,8 @@ sub authenticate {
         $g_return = RLM_MODULE_FAIL;
     }
     try {
-        my $decoded = decode_json( $content );
+	    my $coder = JSON::XS->new->ascii->pretty->allow_nonref;
+	    my $decoded = $coder->decode($content);
         my $message = $decoded->{detail}{message};
         if ( $decoded->{result}{value} ) {
             &radiusd::radlog( Info, "privacyIDEA access granted" );
@@ -492,6 +493,8 @@ sub authenticate {
             &radiusd::radlog( Info, "privacyIDEA failed to handle the request" );
         }
     } catch {
+        my $e = shift;
+        &radiusd::radlog( Info, "$e");
         &radiusd::radlog( Info, "Can not parse response from privacyIDEA." );
     };
 
