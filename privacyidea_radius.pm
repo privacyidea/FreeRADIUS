@@ -448,7 +448,7 @@ sub authenticate {
         $g_return = RLM_MODULE_FAIL;
     }
     try {
-	    my $coder = JSON::XS->new->ascii->pretty->allow_nonref;
+	    my $coder = JSON->new->ascii->pretty->allow_nonref;
 	    my $decoded = $coder->decode($content);
         my $message = $decoded->{detail}{message};
         if ( $decoded->{result}{value} ) {
