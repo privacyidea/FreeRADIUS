@@ -528,6 +528,7 @@ sub authenticate {
 
                         # periodic poll for challenges
                         my $continue_poll = true;
+                        my $challenge_found = false;
                         do {
                             sleep(5);
                             $response = $ua->get("$POLLURL/$token_serial");
@@ -538,13 +539,13 @@ sub authenticate {
                             $decoded = $coder->decode($content);
                             if ($response->is_success && $decoded->{result}{status}) {
                                 # check for challenge matching our transaction id
-
                                 for my $challenge( @{$decoded->{result}{value}{challenges}} ) {
                                     if ($debug == true) {
                                         &radiusd::radlog(Debug, $challenge);
                                     }
 
                                     if ($challenge->{"transaction_id"} eq $RAD_REPLY{'State'}) {
+                                        $challenge_found = true;
                                         &radiusd::radlog( Info, "challenge object found: ".$challenge->{"challenge"} );
                                         if ($challenge->{"otp_valid"} == true) {
                                             # user approved request
@@ -576,7 +577,7 @@ sub authenticate {
                                 last;
                             }
 
-                        } while ($continue_poll)
+                        } while ($continue_poll && $challenge_found)
 
                     }
                 } else {
