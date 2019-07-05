@@ -1,3 +1,0 @@
-perl {
-    filename = /usr/share/privacyidea/freeradius/privacyidea_radius.pm
-}

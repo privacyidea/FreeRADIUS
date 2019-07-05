@@ -1,11 +1,11 @@
 authorize {
         preprocess
-        perl
-                if (ok || updated) {
-                        update control {
-                                Auth-Type := Perl
-                        }
-                }
+        privacyidea-perl
+        if (ok || updated) {
+            update control {
+                Auth-Type := Perl
+            }
+        }
         digest
         suffix
         ntdomain
@@ -17,7 +17,7 @@ authorize {
 
 authenticate {
         Auth-Type Perl {
-        perl
+            privacyidea-perl
         }
         digest
         unix

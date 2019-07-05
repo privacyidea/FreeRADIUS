@@ -1,7 +1,7 @@
 server {
         authorize {
                 #files
-                perl
+                privacyidea-perl
                 if (ok || updated) {
                         update control {
                                 Auth-Type := Perl
@@ -15,7 +15,7 @@ server {
         }
         authenticate {
                 Auth-Type Perl {
-                        perl
+                        privacyidea-perl
                 }
         }
 }
