@@ -1,0 +1,32 @@
+Version 3.1, 2019-05-17
+
+  * Fix mods-perl-privacyidea module for FreeRADIUS 2 (#29)
+  * Fix package dependency with RHEL7 (#25)
+  * The simple "decode_json" does not work under 18.04
+  * Add template for mods-perl (#11)
+  * Provide config for packing for FreeRADIUS2 and 3 (#11)
+  * Add time measurement for privacyIDEA API call
+  * Use the generic subdir from JSON response (#12)
+  * the auth module returns RLM_MODULE_NOTFOUND (#19)
+
+Version 3.0, 2019-03-22
+
+  * Add build environment for ubuntu (#17)
+  * Return RLM_MODULE_FAIL if return codes is not OK 200 (#15)
+  * Add a configuration option for fixing null byte (#13)
+  * Allow several mapping rules for one radius Attribute
+  * Add prefix and suffix to RADIUS attribute
+  * Allow to map substrings of user attributes to RADIUS values (#8/#9)
+  * Pass any RADIUS attribute as client to priacyIDEA (#7)
+  * Add a configurable request timeout
+  * Add support for proxy from environment variable (#2)
+  * Add arbitrary RADIUS attributes in the response.
+  * Add user-agent to request (#1)
+  * Add readme
+  * Add privacyIDEA-Serial to RADIUS response
+  * Add freeradius module configuration to /etc/privacyidea
+  * Add accounting module to FreeRADIUS config.
+  * Improve REALM handling in RADIUS plugin
+  * Fix some FreeRADIUS/SSL issues.
+  * Improve the debian packaging.
+  * Added RADIUS support
