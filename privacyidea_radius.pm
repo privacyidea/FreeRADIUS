@@ -18,9 +18,9 @@
 #               Improve the reading of the config file.
 #    2015-09-25 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               Add the possibility to read config from
-#		/etc/privacyidea/rlm_perl.ini
+#               /etc/privacyidea/rlm_perl.ini
 #    2015-06-10 Cornelius Kölbel <cornelius.koelbel@netknights.it>
-#               Add using of Stripped-User-Name and Realm from the 
+#               Add using of Stripped-User-Name and Realm from the
 #               RAD_REQUEST
 #    2015-04-10 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               fix typo in log
@@ -28,27 +28,27 @@
 #               remove the usage of simplecheck and use /validate/check
 #    2014-06-25 Cornelius Kölbel
 #               changed the used modules from Config::Files to Config::IniFile
-#		        to make it easily run on CentOS with EPEL, without CPAN
-#                      
+#               to make it easily run on CentOS with EPEL, without CPAN
+#
 #    Copyright (C) 2010 - 2014 LSE Leading Security Experts GmbH
-# 
+#
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation, either version 2 of the License, or
 #    (at your option) any later version.
-# 
+#
 #    This program is distributed in the hope that it will be useful,
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
-# 
-#   You should have received a copy of the GNU General Public License
-#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
-# 
 #
-#   Copyright 2002  The FreeRADIUS server project
-#   Copyright 2002  Boian Jordanov <bjordanov@orbitel.bg>
-#   Copyright 2011  LSE Leading Security Experts GmbH
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+#
+#    Copyright 2002  The FreeRADIUS server project
+#    Copyright 2002  Boian Jordanov <bjordanov@orbitel.bg>
+#    Copyright 2011  LSE Leading Security Experts GmbH
 #
 #    E-mail: linotp@lsexperts.de
 #    Contact: www.linotp.org
@@ -64,23 +64,23 @@
 
 =head1 NAME
 
-freeradius_perl - Perl module for use with FreeRADIUS rlm_perl, to authenticate against 
+freeradius_perl - Perl module for use with FreeRADIUS rlm_perl, to authenticate against
   LinOTP      http://www.linotp.org
   privacyIDEA http://www.privacyidea.org
 
 =head1 SYNOPSIS
 
-   use with freeradius:  
-   
+   use with freeradius:
+
    Configure rlm_perl to work with privacyIDEA:
-   in /etc/freeradius/users 
+   in /etc/freeradius/users
     set:
      DEFAULT Auth-type := perl
 
   in /etc/freeradius/modules/perl
      point
      perl {
-         module = 
+         module =
   to this file
 
   in /etc/freeradius/sites-enabled/<yoursite>
@@ -93,33 +93,33 @@ freeradius_perl - Perl module for use with FreeRADIUS rlm_perl, to authenticate 
 
 This module enables freeradius to authenticate using privacyIDEA or LinOTP.
 
-   TODO: 
+   TODO:
      * checking of server certificate
 
 
 =head2 Methods
 
    * authenticate
-   
+
 
 =head1 CONFIGURATION
 
-The authentication request with its URL and default LinOTP/privacyIDEA Realm 
+The authentication request with its URL and default LinOTP/privacyIDEA Realm
 could be defined in a dedicated configuration file, which is expected to be:
 
   /opt/privacyIDEA/rlm_perl.ini
-  
+
 This configuration file could contain default definition for URL and REALM like
   [Default]
   URL = http://192.168.56.1:5001/validate/check
-  REALM =  
+  REALM =
 
-But as well could contain "Access-Type" specific configurations, e.g. for the 
+But as well could contain "Access-Type" specific configurations, e.g. for the
 Access-Type 'scope1', this would look like:
 
   [Default]
   URL = https://localhost/validate/check
-  REALM =  
+  REALM =
   CLIENTATTRIBUTE = Calling-Station-Id
 
   [scope1]
@@ -135,7 +135,7 @@ Cornelius Koelbel (conrelius@privacyidea.org)
 
 Copyright 2013, 2014
 
-This library is free software; you can redistribute it 
+This library is free software; you can redistribute it
 under the GPLv2.
 
 =head1 SEE ALSO
@@ -177,12 +177,12 @@ use constant RLM_MODULE_NOOP     => 7; #  /* module succeeded without doing anyt
 use constant RLM_MODULE_UPDATED  => 8; #  /* OK (pairs modified) */
 use constant RLM_MODULE_NUMCODES => 9; #  /* How many return codes there are */
 
-our $ret_hash = { 
+our $ret_hash = {
     0 => "RLM_MODULE_REJECT",
     1 => "RLM_MODULE_FAIL",
     2 => "RLM_MODULE_OK",
     3 => "RLM_MODULE_HANDLED",
-    4 => "RLM_MODULE_INVALID", 
+    4 => "RLM_MODULE_INVALID",
     5 => "RLM_MODULE_USERLOCK",
     6 => "RLM_MODULE_NOTFOUND",
     7 => "RLM_MODULE_NOOP",
@@ -209,109 +209,110 @@ our $Config = {};
 our $Mapping = {};
 our $cfg_file;
 
-    $Config->{FSTAT} = "not found!";
-    $Config->{URL}     = 'https://127.0.0.1/validate/check';
-    $Config->{REALM}   = '';
-    $Config->{CLIENTATTRIBUTE} = '';
-    $Config->{RESCONF} = "";
-    $Config->{Debug}   = "FALSE";
-    $Config->{SSL_CHECK} = "FALSE";
-    $Config->{TIMEOUT} = 10;
-    $Config->{SPLIT_NULL_BYTE} = "FALSE";
+$Config->{FSTAT} = "not found!";
+$Config->{URL}     = 'https://127.0.0.1/validate/check';
+$Config->{REALM}   = '';
+$Config->{CLIENTATTRIBUTE} = '';
+$Config->{RESCONF} = "";
+$Config->{Debug}   = "FALSE";
+$Config->{SSL_CHECK} = "FALSE";
+$Config->{TIMEOUT} = 10;
+$Config->{SPLIT_NULL_BYTE} = "FALSE";
 
 
 foreach my $file (@CONFIG_FILES) {
-	if (( -e $file )) {
-	    $cfg_file = Config::IniFiles->new( -file => $file);
-	    $CONFIG_FILE = $file;
-	    $Config->{FSTAT} = "found!";
-	    $Config->{URL} = $cfg_file->val("Default", "URL");
-	    $Config->{REALM}   = $cfg_file->val("Default", "REALM");
-	    $Config->{RESCONF} = $cfg_file->val("Default", "RESCONF");
-	    $Config->{Debug}   = $cfg_file->val("Default", "DEBUG");
-            $Config->{SPLIT_NULL_BYTE} = $cfg_file->val("Default", "SPLIT_NULL_BYTE");
-	    $Config->{SSL_CHECK} = $cfg_file->val("Default", "SSL_CHECK");
-	    $Config->{TIMEOUT} = $cfg_file->val("Default", "TIMEOUT", 10);
-            $Config->{CLIENTATTRIBUTE} = $cfg_file->val("Default", "CLIENTATTRIBUTE");
-	}	
+    if (( -e $file )) {
+        $cfg_file = Config::IniFiles->new( -file => $file);
+        $CONFIG_FILE = $file;
+        $Config->{FSTAT} = "found!";
+        $Config->{URL} = $cfg_file->val("Default", "URL");
+        $Config->{REALM}   = $cfg_file->val("Default", "REALM");
+        $Config->{RESCONF} = $cfg_file->val("Default", "RESCONF");
+        $Config->{Debug}   = $cfg_file->val("Default", "DEBUG");
+        $Config->{SPLIT_NULL_BYTE} = $cfg_file->val("Default", "SPLIT_NULL_BYTE");
+        $Config->{SSL_CHECK} = $cfg_file->val("Default", "SSL_CHECK");
+        $Config->{TIMEOUT} = $cfg_file->val("Default", "TIMEOUT", 10);
+        $Config->{CLIENTATTRIBUTE} = $cfg_file->val("Default", "CLIENTATTRIBUTE");
+    }
 }
 
 sub mapResponse {
-	# This function maps the Mapping sections in rlm_perl.ini
-	# to RADIUS Attributes.
-	my $decoded = shift;
-	my %radReply;
-	my $topnode;
-	foreach my $group ($cfg_file->Groups) {
-		&radiusd::radlog( Info, "++++ Parsing group: $group\n");
-		foreach my $member ($cfg_file->GroupMembers($group)) {
-			&radiusd::radlog(Info, "+++++ Found member '$member'");
-			$member =~/(.*)\ (.*)/;
-			$topnode = $2;
-			if ($group eq "Mapping") {
-				foreach my $key ($cfg_file->Parameters($member)){
-					my $radiusAttribute = $cfg_file->val($member, $key);
-					&radiusd::radlog( Info, "++++++ Map: $topnode : $key -> $radiusAttribute");
-					$radReply{$radiusAttribute} = $decoded->{detail}{$topnode}{$key};
-				};
-			}
-			if ($group eq "Attribute") {
-				my $radiusAttribute = $topnode;
-				# opional overwrite radiusAttribute
-				my $ra = $cfg_file->val($member, "radiusAttribute");
-				if ($ra ne "") {
-					$radiusAttribute = $ra;
-				}
-				my $userAttribute = $cfg_file->val($member, "userAttribute");
-				my $regex = $cfg_file->val($member, "regex");
-				my $directory = $cfg_file->val($member, "dir");
-				my $prefix = $cfg_file->val($member, "prefix");
-				my $suffix = $cfg_file->val($member, "suffix");
-				&radiusd::radlog( Info, "++++++ Attribute: IF '$directory'->'$userAttribute' == '$regex' THEN '$radiusAttribute'");
-				my $attributevalue="";
-				if ($directory eq "") {
-					$attributevalue = $decoded->{detail}{$userAttribute};
-					&radiusd::radlog( Info, "++++++ no directory");
-				} else {
-					$attributevalue = $decoded->{detail}{$directory}{$userAttribute};
-					&radiusd::radlog( Info, "++++++ searching in directory $directory");
-				}
-				my @values = ();
-				if (ref($attributevalue) eq "") {
-					&radiusd::radlog(Info, "+++++++ User attribute is a string: $attributevalue");
-					push(@values, $attributevalue);	
-				} 
-				if (ref($attributevalue) eq "ARRAY") {
-					&radiusd::radlog(Info, "+++++++ User attribute is a list: $attributevalue");
-					@values = @$attributevalue;
-				}
-				foreach my $value (@values) {
-					&radiusd::radlog(Info, "+++++++ trying to match $value");
-					if ($value =~ /$regex/) {
-						my $result = $1;
-						$radReply{$radiusAttribute} = "$prefix$result$suffix";
-						&radiusd::radlog(Info, "++++++++ Result: Add RADIUS attribute $radiusAttribute = $result");
-					} else {
-						&radiusd::radlog(Info, "++++++++ Result: No match, no RADIUS attribute $radiusAttribute added.");
-					}
-				}
-			}
-		}
-	}
-	
-	foreach my $key ($cfg_file->Parameters("Mapping")) {
-		my $radiusAttribute = $cfg_file->val("Mapping", $key);
-		&radiusd::radlog( Info, "+++ Map: $key -> $radiusAttribute");
-		$radReply{$radiusAttribute} = $decoded->{detail}{$key};
-	}
-	
-	return %radReply;
+    # This function maps the Mapping sections in rlm_perl.ini
+    # to RADIUS Attributes.
+    my $decoded = shift;
+    my %radReply;
+    my $topnode;
+    if ($cfg_file) {
+        foreach my $group ($cfg_file->Groups) {
+            &radiusd::radlog( Info, "++++ Parsing group: $group\n");
+            foreach my $member ($cfg_file->GroupMembers($group)) {
+                &radiusd::radlog(Info, "+++++ Found member '$member'");
+                $member =~/(.*)\ (.*)/;
+                $topnode = $2;
+                if ($group eq "Mapping") {
+                    foreach my $key ($cfg_file->Parameters($member)){
+                        my $radiusAttribute = $cfg_file->val($member, $key);
+                        &radiusd::radlog( Info, "++++++ Map: $topnode : $key -> $radiusAttribute");
+                        $radReply{$radiusAttribute} = $decoded->{detail}{$topnode}{$key};
+                    };
+                }
+                if ($group eq "Attribute") {
+                    my $radiusAttribute = $topnode;
+                    # opional overwrite radiusAttribute
+                    my $ra = $cfg_file->val($member, "radiusAttribute");
+                    if ($ra ne "") {
+                        $radiusAttribute = $ra;
+                    }
+                    my $userAttribute = $cfg_file->val($member, "userAttribute");
+                    my $regex = $cfg_file->val($member, "regex");
+                    my $directory = $cfg_file->val($member, "dir");
+                    my $prefix = $cfg_file->val($member, "prefix");
+                    my $suffix = $cfg_file->val($member, "suffix");
+                    &radiusd::radlog( Info, "++++++ Attribute: IF '$directory'->'$userAttribute' == '$regex' THEN '$radiusAttribute'");
+                    my $attributevalue="";
+                    if ($directory eq "") {
+                        $attributevalue = $decoded->{detail}{$userAttribute};
+                        &radiusd::radlog( Info, "++++++ no directory");
+                    } else {
+                        $attributevalue = $decoded->{detail}{$directory}{$userAttribute};
+                        &radiusd::radlog( Info, "++++++ searching in directory $directory");
+                    }
+                    my @values = ();
+                    if (ref($attributevalue) eq "") {
+                        &radiusd::radlog(Info, "+++++++ User attribute is a string: $attributevalue");
+                        push(@values, $attributevalue);
+                    }
+                    if (ref($attributevalue) eq "ARRAY") {
+                        &radiusd::radlog(Info, "+++++++ User attribute is a list: $attributevalue");
+                        @values = @$attributevalue;
+                    }
+                    foreach my $value (@values) {
+                        &radiusd::radlog(Info, "+++++++ trying to match $value");
+                        if ($value =~ /$regex/) {
+                            my $result = $1;
+                            $radReply{$radiusAttribute} = "$prefix$result$suffix";
+                            &radiusd::radlog(Info, "++++++++ Result: Add RADIUS attribute $radiusAttribute = $result");
+                        } else {
+                            &radiusd::radlog(Info, "++++++++ Result: No match, no RADIUS attribute $radiusAttribute added.");
+                        }
+                    }
+                }
+            }
+        }
+
+        foreach my $key ($cfg_file->Parameters("Mapping")) {
+            my $radiusAttribute = $cfg_file->val("Mapping", $key);
+            &radiusd::radlog( Info, "+++ Map: $key -> $radiusAttribute");
+            $radReply{$radiusAttribute} = $decoded->{detail}{$key};
+        }
+    }
+    return %radReply;
 }
 
 # Function to handle authenticate
 sub authenticate {
 
-    ## show where the config comes from - 
+    ## show where the config comes from -
     # in the module init we can't print this out, so it starts here
     &radiusd::radlog( Info, "Config File $CONFIG_FILE ".$Config->{FSTAT} );
 
@@ -319,7 +320,7 @@ sub authenticate {
     my $URL     = $Config->{URL};
     my $REALM   = $Config->{REALM};
     my $RESCONF = $Config->{RESCONF};
-    
+
     my $debug   = false;
     if ( $Config->{Debug} =~ /true/i ) {
         $debug = true;
@@ -328,7 +329,7 @@ sub authenticate {
 
     my $check_ssl = false;
     if ( $Config->{SSL_CHECK} =~ /true/i ) {
-		$check_ssl = true;
+        $check_ssl = true;
     }
 
     my $timeout = $Config->{TIMEOUT};
@@ -339,20 +340,20 @@ sub authenticate {
     my $auth_type = $RAD_CONFIG{"Auth-Type"};
 
     try {
-	&radiusd::radlog( Info, "Looking for config for auth-type $auth_type");
-	if ( ( $cfg_file->val( $auth_type, "URL") )) {
+        &radiusd::radlog( Info, "Looking for config for auth-type $auth_type");
+        if ( ( $cfg_file->val( $auth_type, "URL") )) {
             $URL = $cfg_file->val( $auth_type, "URL" );
         }
-	if ( ( $cfg_file->val( $auth_type, "REALM") )) {
+        if ( ( $cfg_file->val( $auth_type, "REALM") )) {
             $REALM = $cfg_file->val( $auth_type, "REALM" );
-        }  
+        }
         if ( ( $cfg_file->val( $auth_type, "RESCONF") )) {
             $RESCONF = $cfg_file->val( $auth_type, "RESCONF" );
         }
-      }
-      catch {
+    }
+    catch {
         &radiusd::radlog( Info, "Warning: $@" );
-      };
+    };
 
     if ( $debug == true ) {
         &log_request_attributes;
@@ -408,7 +409,7 @@ sub authenticate {
     &radiusd::radlog( Info, "state sent to privacyidea: $params{'state'}" );
     if ( $debug == true ) {
         &radiusd::radlog( Debug, "urlparam $_ = $params{$_}\n" )
-          for ( keys %params );
+        for ( keys %params );
     }
     else {
         &radiusd::radlog( Info, "urlparam $_ \n" ) for ( keys %params );
@@ -420,15 +421,15 @@ sub authenticate {
     &radiusd::radlog( Info, "Request timeout: $timeout " );
     # Set the user-agent to be fetched in privacyIDEA Client Application Type
     $ua->agent("FreeRADIUS");
-	if ($check_ssl == false) {
-		try {
-			# This is only availble with with LWP version 6
-        	&radiusd::radlog( Info, "Not verifying SSL certificate!" );
-			$ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0x00 );
-		} catch {
+    if ($check_ssl == false) {
+        try {
+            # This is only availble with with LWP version 6
+            &radiusd::radlog( Info, "Not verifying SSL certificate!" );
+            $ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0x00 );
+        } catch {
             &radiusd::radlog( Error, "ssl_opts only supported with LWP 6. error: $@" );
-		}
-	}
+        }
+    }
     my $starttime = [gettimeofday];
     my $response = $ua->post( $URL, \%params );
     my $content  = $response->decoded_content();
@@ -448,12 +449,12 @@ sub authenticate {
         $g_return = RLM_MODULE_FAIL;
     }
     try {
-	    my $coder = JSON->new->ascii->pretty->allow_nonref;
-	    my $decoded = $coder->decode($content);
+        my $coder = JSON->new->ascii->pretty->allow_nonref;
+        my $decoded = $coder->decode($content);
         my $message = $decoded->{detail}{message};
         if ( $decoded->{result}{value} ) {
             &radiusd::radlog( Info, "privacyIDEA access granted" );
-            $RAD_REPLY{'Reply-Message'} = "privacyIDEA access granted";            
+            $RAD_REPLY{'Reply-Message'} = "privacyIDEA access granted";
             # Add the response hash to the Radius Reply
             %RAD_REPLY = ( %RAD_REPLY, mapResponse($decoded));
             $g_return = RLM_MODULE_OK;
@@ -471,7 +472,7 @@ sub authenticate {
                 $RAD_REPLY{'State'} = $decoded->{detail}{transaction_id};
                 $RAD_CHECK{'Response-Packet-Type'} = "Access-Challenge";
                 # Add the response hash to the Radius Reply
-				%RAD_REPLY = ( %RAD_REPLY, mapResponse($decoded));
+                %RAD_REPLY = ( %RAD_REPLY, mapResponse($decoded));
                 $g_return  = RLM_MODULE_HANDLED;
             } else {
                 &radiusd::radlog( Info, "privacyIDEA access denied" );
