@@ -1,3 +1,0 @@
-perl privacyidea-perl {
-    filename = ${modconfdir}/${.:instance}/privacyidea_radius.pm
-}
