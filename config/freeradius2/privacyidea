@@ -1,6 +1,6 @@
 authorize {
     preprocess
-    mods-perl-privacyidea
+    perl-privacyidea
     if (ok || updated) {
         update control {
             Auth-Type := Perl
@@ -16,7 +16,7 @@ authorize {
 
 authenticate {
     Auth-Type Perl {
-        mods-perl-privacyidea
+        perl-privacyidea
     }
     digest
     unix
