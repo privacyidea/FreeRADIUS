@@ -1,22 +1,21 @@
 server {
-        authorize {
-                #files
-                perl
-                if (ok || updated) {
-                        update control {
-                                Auth-Type := Perl
-                        }
-                }
+    authorize {
+        #files
+        perl-privacyidea
+        if (ok || updated) {
+            update control {
+                Auth-Type := Perl
+            }
         }
-        listen {
-                type = auth
-                ipaddr = *
-                port = 0
+    }
+    listen {
+        type = auth
+        ipaddr = *
+        port = 0
+    }
+    authenticate {
+        Auth-Type Perl {
+            perl-privacyidea
         }
-        authenticate {
-                Auth-Type Perl {
-                        perl
-                }
-        }
+    }
 }
-
