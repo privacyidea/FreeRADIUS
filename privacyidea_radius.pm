@@ -236,6 +236,23 @@ foreach my $file (@CONFIG_FILES) {
     }
 }
 
+sub add_reply_attibute {
+
+    my $radReply = shift;
+    my $newValue = shift;
+
+    if (ref($radReply) eq "ARRAY") {
+        # This is an array, there is already a value to this replyAttribute
+        #&radiusd::radlog( Info, "Adding $newValue to the Reply Attribute, being an array.\n");
+        push @$radReply, $newValue;
+    } else {
+        # This is an empty replyValue, we add the first value
+        #&radiusd::radlog( Info, "Adding $newValue to the Reply Attribute, being a string.\n");
+        $radReply = [$newValue];
+    }
+    return $radReply;
+}
+
 sub mapResponse {
     # This function maps the Mapping sections in rlm_perl.ini
     # to RADIUS Attributes.
@@ -253,7 +270,8 @@ sub mapResponse {
                     foreach my $key ($cfg_file->Parameters($member)){
                         my $radiusAttribute = $cfg_file->val($member, $key);
                         &radiusd::radlog( Info, "++++++ Map: $topnode : $key -> $radiusAttribute");
-                        $radReply{$radiusAttribute} = $decoded->{detail}{$topnode}{$key};
+                        my $newValue = $decoded->{detail}{$topnode}{$key};
+                        $radReply{$radiusAttribute} = add_reply_attibute($radReply{$radiusAttribute}, $newValue);
                     };
                 }
                 if ($group eq "Attribute") {
@@ -290,7 +308,7 @@ sub mapResponse {
                         &radiusd::radlog(Info, "+++++++ trying to match $value");
                         if ($value =~ /$regex/) {
                             my $result = $1;
-                            $radReply{$radiusAttribute} = "$prefix$result$suffix";
+                            $radReply{$radiusAttribute} = add_reply_attibute($radReply{$radiusAttribute}, "$prefix$result$suffix");
                             &radiusd::radlog(Info, "++++++++ Result: Add RADIUS attribute $radiusAttribute = $result");
                         } else {
                             &radiusd::radlog(Info, "++++++++ Result: No match, no RADIUS attribute $radiusAttribute added.");
@@ -303,7 +321,7 @@ sub mapResponse {
         foreach my $key ($cfg_file->Parameters("Mapping")) {
             my $radiusAttribute = $cfg_file->val("Mapping", $key);
             &radiusd::radlog( Info, "+++ Map: $key -> $radiusAttribute");
-            $radReply{$radiusAttribute} = $decoded->{detail}{$key};
+            $radReply{$radiusAttribute} = add_reply_attibute($radReply{$radiusAttribute}, $decoded->{detail}{$key});
         }
     }
     return %radReply;
