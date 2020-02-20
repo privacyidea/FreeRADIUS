@@ -1,3 +1,17 @@
+Version 3.3, 2020-02-20
+
+  * Allow multiple same reply attributes
+    e can now do attribute matching to allow multiple RADIUS
+    attributes in the response like several Class attributes,
+    that are usually used for putting users into groups.
+
+Version 3.2, 2019-08-30
+
+  * Remove default examples from rlm_perl.ini
+  * Fix a failure if config file is missing
+  * provide an extra perl module configuration,
+    to avoid config clashes
+
 Version 3.1, 2019-05-17
 
   * Fix mods-perl-privacyidea module for FreeRADIUS 2 (#29)
