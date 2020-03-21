@@ -155,7 +155,7 @@ use Time::HiRes qw( gettimeofday tv_interval );
 
 # use ...
 # This is very important ! Without this script will not get the filled hashes from main.
-use vars qw(%RAD_REQUEST %RAD_REPLY %RAD_CHECK %RAD_CONFIG );
+use vars qw(%RAD_REQUEST %RAD_REPLY %RAD_CHECK %RAD_CONFIG %RAD_PERLCONF);
 
 # This is hash wich hold original request from radius
 #my %RAD_REQUEST;
@@ -203,8 +203,17 @@ use constant Proxy => 5;
 use constant Acct  => 6;
 
 
-our $CONFIG_FILE = "";
+# You can configure, which config file to use in the perl module definition:
+# perl privacyIDEA-A {
+#   filename = /usr/share/privacyidea/freeradius/privacyidea_radius.pm
+#   config {
+#        configfile = /etc/privacyidea/rlm_perl-A.ini
+#        }
+# }
+our $CONFIG_FILE = $RAD_PERLCONF{'configfile'};
 our @CONFIG_FILES = ("/etc/privacyidea/rlm_perl.ini", "/etc/freeradius/rlm_perl.ini", "/opt/privacyIDEA/rlm_perl.ini");
+
+
 our $Config = {};
 our $Mapping = {};
 our $cfg_file;
@@ -219,6 +228,9 @@ $Config->{SSL_CHECK} = "FALSE";
 $Config->{TIMEOUT} = 10;
 $Config->{SPLIT_NULL_BYTE} = "FALSE";
 
+if ($CONFIG_FILE) {
+    @CONFIG_FILES = ($CONFIG_FILE);
+}
 
 foreach my $file (@CONFIG_FILES) {
     if (( -e $file )) {
