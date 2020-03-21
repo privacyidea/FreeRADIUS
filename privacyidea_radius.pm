@@ -1,5 +1,10 @@
 #
 #    privacyIDEA FreeRADIUS plugin
+#    2020-03-21 Cornelius Kölbel <cornelius.koelbel@netknights.it>
+#               Add ADD_EMPTY_PASS to send an empty password to 
+#               privacyIDEA in case no password is given.
+#               Allow config section to have different modules
+#               with different config files.
 #    2019-03-17 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               Add password splitting
 #    2018-01-12 Cornelius Kölbel <cornelius.koelbel@netknights.it>
@@ -227,6 +232,7 @@ $Config->{Debug}   = "FALSE";
 $Config->{SSL_CHECK} = "FALSE";
 $Config->{TIMEOUT} = 10;
 $Config->{SPLIT_NULL_BYTE} = "FALSE";
+$Config->{ADD_EMPTY_PASS} = "FALSE";
 
 if ($CONFIG_FILE) {
     @CONFIG_FILES = ($CONFIG_FILE);
@@ -242,6 +248,7 @@ foreach my $file (@CONFIG_FILES) {
         $Config->{RESCONF} = $cfg_file->val("Default", "RESCONF");
         $Config->{Debug}   = $cfg_file->val("Default", "DEBUG");
         $Config->{SPLIT_NULL_BYTE} = $cfg_file->val("Default", "SPLIT_NULL_BYTE");
+        $Config->{ADD_EMPTY_PASS} = $cfg_file->val("Default", "ADD_EMPTY_PASS");
         $Config->{SSL_CHECK} = $cfg_file->val("Default", "SSL_CHECK");
         $Config->{TIMEOUT} = $cfg_file->val("Default", "TIMEOUT", 10);
         $Config->{CLIENTATTRIBUTE} = $cfg_file->val("Default", "CLIENTATTRIBUTE");
@@ -412,6 +419,8 @@ sub authenticate {
             $password = @p[0];
         }
         $params{"pass"} = $password;
+    } elsif ( $Config->{ADD_EMPTY_PASS} =~ /true/i ) {
+        $params{"pass"} = "";
     }
     if ( exists( $RAD_REQUEST{'NAS-IP-Address'} ) ) {
         $params{"client"} = $RAD_REQUEST{'NAS-IP-Address'};

@@ -1,8 +1,9 @@
 Version 3.4, 2020-XX-XX
 
   * Allow different configs with the same script
-    to use redundant to ask different privacyIDEA servers.
-
+    to use redundant to ask different privacyIDEA servers. (#10)
+  * Add parameter ADD_EMPTY_PASS to handle RADIUS requests
+    without User-Password.
 
 Version 3.3, 2020-02-20
 
