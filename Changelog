@@ -1,4 +1,4 @@
-Version 3.4, 2020-XX-XX
+Version 3.4, 2020-03-24
 
   * Allow different configs with the same script
     to use redundant to ask different privacyIDEA servers. (#10)
