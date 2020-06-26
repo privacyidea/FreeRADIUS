@@ -1,5 +1,8 @@
 #
 #    privacyIDEA FreeRADIUS plugin
+#    2020-06-26 Marco Hald <marco.hald@crailsheim.de>
+#               Add check for Radius Password Encoding 
+#               to support Windows NPS Server windows-1252 encoding.
 #    2020-03-21 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               Add ADD_EMPTY_PASS to send an empty password to 
 #               privacyIDEA in case no password is given.
@@ -156,7 +159,8 @@ use Data::Dump;
 use Try::Tiny;
 use JSON;
 use Time::HiRes qw( gettimeofday tv_interval );
-
+use Encode::Detect::Detector;
+use Encode 'decode';
 
 # use ...
 # This is very important ! Without this script will not get the filled hashes from main.
@@ -414,6 +418,15 @@ sub authenticate {
     }
     if ( exists( $RAD_REQUEST{'User-Password'} ) ) {
         my $password = $RAD_REQUEST{'User-Password'};
+        if(my $encodingname = Encode::Detect::Detector::detect($password )){
+          &radiusd::radlog( Debug, "Password Encoding: $encodingname" );
+          my $decoded = decode $encodingname, $password ;
+          &radiusd::radlog( Debug, "Password Decoded: $decoded" );
+          $RAD_REQUEST{'User-Password'} = $decoded;
+          $password = $decoded;          
+        }else{
+          &radiusd::radlog( Debug, "Password not Encoded" );
+        }        
         if ( $Config->{SPLIT_NULL_BYTE} =~ /true/i ) {
             my @p = split(/\0/, $password);
             $password = @p[0];
