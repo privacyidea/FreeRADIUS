@@ -17,7 +17,7 @@
 #    2016-08-13 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               Add user-agent to be displayed in
 #               privacyIDEA Client Applicaton Type
-#    2015-10-10 Cornelius Kölbel <cornelius.koelbel@nektnights.it>
+#    2015-10-10 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               Add privacyIDEA-Serial to the response.
 #    2015-10-09 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               Improve the reading of the config file.
