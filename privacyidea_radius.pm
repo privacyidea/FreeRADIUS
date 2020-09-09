@@ -1,7 +1,9 @@
 #
 #    privacyIDEA FreeRADIUS plugin
+#    2020-09-09 Cornelius Kölbel <cornelius.koelbel@netknights.it>
+#               Add Packet-Src-IP-Address as fallback for client IP.
 #    2020-03-21 Cornelius Kölbel <cornelius.koelbel@netknights.it>
-#               Add ADD_EMPTY_PASS to send an empty password to 
+#               Add ADD_EMPTY_PASS to send an empty password to
 #               privacyIDEA in case no password is given.
 #               Allow config section to have different modules
 #               with different config files.
@@ -424,10 +426,15 @@ sub authenticate {
     }
     if ( exists( $RAD_REQUEST{'NAS-IP-Address'} ) ) {
         $params{"client"} = $RAD_REQUEST{'NAS-IP-Address'};
+        &radiusd::radlog( Info, "Setting client IP to $params{'client'}." );
+    } elsif ( exists( $RAD_REQUEST{'Packet-Src-IP-Address'} ) ) {
+        $params{"client"} = $RAD_REQUEST{'Packet-Src-IP-Address'};
+        &radiusd::radlog( Info, "Setting client IP to $params{'client'}." );
     }
     if (exists ( $Config->{CLIENTATTRIBUTE} ) ) {
         if ( exists( $RAD_REQUEST{$Config->{CLIENTATTRIBUTE}} ) ) {
             $params{"client"} = $RAD_REQUEST{$Config->{CLIENTATTRIBUTE}};
+            &radiusd::radlog( Info, "Setting client IP to $params{'client'}." );
         }
     }
     if ( length($REALM) > 0 ) {
@@ -544,15 +551,13 @@ sub authenticate {
 }
 
 sub log_request_attributes {
-
     # This shouldn't be done in production environments!
     # This is only meant for debugging!
     for ( keys %RAD_REQUEST ) {
         &radiusd::radlog( Debug, "RAD_REQUEST: $_ = $RAD_REQUEST{$_}" );
-        ;
     }
-
 }
+
 
 # Function to handle authorize
 sub authorize {
