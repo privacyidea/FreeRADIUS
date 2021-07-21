@@ -499,8 +499,8 @@ sub authenticate {
         my $decoded = $coder->decode($content);
         my $message = $decoded->{detail}{message};
         if ( $decoded->{result}{value} ) {
-            &radiusd::radlog( Info, "privacyIDEA access granted" );
-            $RAD_REPLY{'Reply-Message'} = "privacyIDEA access granted for $params{'user'} realm='$params{'realm'}'";
+            &radiusd::radlog( Info, "privacyIDEA access granted for $params{'user'} realm='$params{'realm'}'" );
+            $RAD_REPLY{'Reply-Message'} = "privacyIDEA access granted";
             # Add the response hash to the Radius Reply
             %RAD_REPLY = ( %RAD_REPLY, mapResponse($decoded));
             $g_return = RLM_MODULE_OK;
