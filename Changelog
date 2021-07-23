@@ -1,3 +1,8 @@
+Version 3.4.1, 2021-07-23
+
+  * Fix the urlencoding of username and password to work
+    with privacyIDEA 3.6. (#50)
+
 Version 3.4, 2020-03-24
 
   * Allow different configs with the same script

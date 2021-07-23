@@ -1,5 +1,7 @@
 #
 #    privacyIDEA FreeRADIUS plugin
+#    2021-07-23 Cornelius Kölbel <cornelius.koelbel@netknights.it>
+#               URL encode parameters
 #    2020-09-09 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               Add Packet-Src-IP-Address as fallback for client IP.
 #    2020-03-21 Cornelius Kölbel <cornelius.koelbel@netknights.it>
@@ -158,6 +160,7 @@ use Data::Dump;
 use Try::Tiny;
 use JSON;
 use Time::HiRes qw( gettimeofday tv_interval );
+use URI::Encode;
 
 
 # use ...
@@ -424,6 +427,10 @@ sub authenticate {
     } elsif ( $Config->{ADD_EMPTY_PASS} =~ /true/i ) {
         $params{"pass"} = "";
     }
+    # URL encode username and password
+    my $uri = URI::Encode->new( { encode_reserved => 0 } )
+    $params{"user"} = $uri->encode($params{"user"});
+    $params{"pass"} = $uri->encode($params{"pass"});
     if ( exists( $RAD_REQUEST{'NAS-IP-Address'} ) ) {
         $params{"client"} = $RAD_REQUEST{'NAS-IP-Address'};
         &radiusd::radlog( Info, "Setting client IP to $params{'client'}." );
