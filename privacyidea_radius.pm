@@ -1,5 +1,8 @@
 #
 #    privacyIDEA FreeRADIUS plugin
+#    2021-04-20 Cornelius Kölbel <cornelius.koelbel@netknights.it>
+#               Allow several different Attribute section of the same
+#               radiusAttribute.
 #    2020-09-09 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               Add Packet-Src-IP-Address as fallback for client IP.
 #    2020-03-21 Cornelius Kölbel <cornelius.koelbel@netknights.it>
@@ -285,7 +288,7 @@ sub mapResponse {
             &radiusd::radlog( Info, "++++ Parsing group: $group\n");
             foreach my $member ($cfg_file->GroupMembers($group)) {
                 &radiusd::radlog(Info, "+++++ Found member '$member'");
-                $member =~/(.*)\ (.*)/;
+                $member =~/(.*?)\ (.*)/;
                 $topnode = $2;
                 if ($group eq "Mapping") {
                     foreach my $key ($cfg_file->Parameters($member)){
@@ -296,7 +299,12 @@ sub mapResponse {
                     };
                 }
                 if ($group eq "Attribute") {
+                    &radiusd::radlog(Info, "+++++ Checking '$topnode'");
                     my $radiusAttribute = $topnode;
+                    if ($topnode =~/(.*?)\ (.*)/) {
+                      $radiusAttribute = $1;
+                      &radiusd::radlog(Info, "+++++ Extracting radiusAttribute $radiusAttribute from '$topnode'");
+                    }
                     # opional overwrite radiusAttribute
                     my $ra = $cfg_file->val($member, "radiusAttribute");
                     if ($ra ne "") {
