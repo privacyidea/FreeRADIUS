@@ -428,7 +428,7 @@ sub authenticate {
         $params{"pass"} = "";
     }
     # URL encode username and password
-    my $uri = URI::Encode->new( { encode_reserved => 0 } )
+    my $uri = URI::Encode->new( { encode_reserved => 0 } );
     $params{"user"} = $uri->encode($params{"user"});
     $params{"pass"} = $uri->encode($params{"pass"});
     if ( exists( $RAD_REQUEST{'NAS-IP-Address'} ) ) {
