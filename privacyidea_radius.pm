@@ -333,7 +333,7 @@ sub mapResponse {
                         if ($value =~ /$regex/) {
                             my $result = $1;
                             $radReply{$radiusAttribute} = add_reply_attibute($radReply{$radiusAttribute}, "$prefix$result$suffix");
-                            &radiusd::radlog(Info, "++++++++ Result: Add RADIUS attribute $radiusAttribute = $result");
+                            &radiusd::radlog(Info, "++++++++ Result: Add RADIUS attribute $radiusAttribute = $prefix$result$suffix");
                         } else {
                             &radiusd::radlog(Info, "++++++++ Result: No match, no RADIUS attribute $radiusAttribute added.");
                         }
@@ -506,7 +506,7 @@ sub authenticate {
         my $decoded = $coder->decode($content);
         my $message = $decoded->{detail}{message};
         if ( $decoded->{result}{value} ) {
-            &radiusd::radlog( Info, "privacyIDEA access granted" );
+            &radiusd::radlog( Info, "privacyIDEA access granted for $params{'user'} realm='$params{'realm'}'" );
             $RAD_REPLY{'Reply-Message'} = "privacyIDEA access granted";
             # Add the response hash to the Radius Reply
             %RAD_REPLY = ( %RAD_REPLY, mapResponse($decoded));
@@ -528,7 +528,7 @@ sub authenticate {
                 %RAD_REPLY = ( %RAD_REPLY, mapResponse($decoded));
                 $g_return  = RLM_MODULE_HANDLED;
             } else {
-                &radiusd::radlog( Info, "privacyIDEA access denied" );
+                &radiusd::radlog( Info, "privacyIDEA access denied for $params{'user'} realm='$params{'realm'}'" );
                 #$RAD_REPLY{'Reply-Message'} = "privacyIDEA access denied";
                 $g_return = RLM_MODULE_REJECT;
             }
