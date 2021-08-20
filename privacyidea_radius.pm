@@ -161,7 +161,7 @@ use Try::Tiny;
 use JSON;
 use Time::HiRes qw( gettimeofday tv_interval );
 use URI::Encode;
-
+use Encode::Guess;
 
 # use ...
 # This is very important ! Without this script will not get the filled hashes from main.
@@ -422,6 +422,15 @@ sub authenticate {
         if ( $Config->{SPLIT_NULL_BYTE} =~ /true/i ) {
             my @p = split(/\0/, $password);
             $password = @p[0];
+        }
+        # Encode password
+        my $decoder = Encode::Guess->guess($password);
+        if ( ! ref($decoder) ) {
+            radiusd::radlog( Info, "Could not find valid password encoding. Sending password as-is." );
+            radiusd::radlog( Debug, $decoder );
+        } else {
+            &radiusd::radlog( Info, "Password encoding guessed: " . $decoder->name);
+            $password = $decoder->decode($password);
         }
         $params{"pass"} = $password;
     } elsif ( $Config->{ADD_EMPTY_PASS} =~ /true/i ) {
