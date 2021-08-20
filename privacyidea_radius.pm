@@ -423,7 +423,7 @@ sub authenticate {
             my @p = split(/\0/, $password);
             $password = @p[0];
         }
-        # Encode password
+        # Decode password (from <https://perldoc.perl.org/Encode::Guess#Encode::Guess-%3Eguess($data)>)
         my $decoder = Encode::Guess->guess($password);
         if ( ! ref($decoder) ) {
             radiusd::radlog( Info, "Could not find valid password encoding. Sending password as-is." );
