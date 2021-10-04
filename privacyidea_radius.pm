@@ -160,7 +160,6 @@ use Data::Dump;
 use Try::Tiny;
 use JSON;
 use Time::HiRes qw( gettimeofday tv_interval );
-use URI::Encode;
 use Encode::Guess;
 
 # use ...
@@ -436,10 +435,6 @@ sub authenticate {
     } elsif ( $Config->{ADD_EMPTY_PASS} =~ /true/i ) {
         $params{"pass"} = "";
     }
-    # URL encode username and password
-    my $uri = URI::Encode->new( { encode_reserved => 0 } );
-    $params{"user"} = $uri->encode($params{"user"});
-    $params{"pass"} = $uri->encode($params{"pass"});
     if ( exists( $RAD_REQUEST{'NAS-IP-Address'} ) ) {
         $params{"client"} = $RAD_REQUEST{'NAS-IP-Address'};
         &radiusd::radlog( Info, "Setting client IP to $params{'client'}." );
