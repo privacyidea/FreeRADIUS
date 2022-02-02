@@ -163,6 +163,7 @@ use Time::HiRes qw( gettimeofday tv_interval );
 use URI::Encode;
 use Encode::Guess;
 
+
 # use ...
 # This is very important ! Without this script will not get the filled hashes from main.
 use vars qw(%RAD_REQUEST %RAD_REPLY %RAD_CHECK %RAD_CONFIG %RAD_PERLCONF);
@@ -235,6 +236,7 @@ $Config->{CLIENTATTRIBUTE} = '';
 $Config->{RESCONF} = "";
 $Config->{Debug}   = "FALSE";
 $Config->{SSL_CHECK} = "FALSE";
+$Config->{SSL_CA_PATH} = '';
 $Config->{TIMEOUT} = 10;
 $Config->{SPLIT_NULL_BYTE} = "FALSE";
 $Config->{ADD_EMPTY_PASS} = "FALSE";
@@ -255,6 +257,7 @@ foreach my $file (@CONFIG_FILES) {
         $Config->{SPLIT_NULL_BYTE} = $cfg_file->val("Default", "SPLIT_NULL_BYTE");
         $Config->{ADD_EMPTY_PASS} = $cfg_file->val("Default", "ADD_EMPTY_PASS");
         $Config->{SSL_CHECK} = $cfg_file->val("Default", "SSL_CHECK");
+		$Config->{SSL_CA_PATH} = $cfg_file->val("Default", "SSL_CA_PATH");
         $Config->{TIMEOUT} = $cfg_file->val("Default", "TIMEOUT", 10);
         $Config->{CLIENTATTRIBUTE} = $cfg_file->val("Default", "CLIENTATTRIBUTE");
     }
@@ -362,6 +365,7 @@ sub authenticate {
     my $URL     = $Config->{URL};
     my $REALM   = $Config->{REALM};
     my $RESCONF = $Config->{RESCONF};
+    my $SSL_CA_PATH = $Config->{SSL_CA_PATH};
 
     my $debug   = false;
     if ( $Config->{Debug} =~ /true/i ) {
@@ -373,6 +377,10 @@ sub authenticate {
     if ( $Config->{SSL_CHECK} =~ /true/i ) {
         $check_ssl = true;
     }
+
+    &radiusd::radlog( Info, "Verifying SSL certificate: ". $Config->{SSL_CHECK} );
+
+    &radiusd::radlog( Info, "Default SSL_CA_PATH is: ". $Config->{SSL_CA_PATH} );
 
     my $timeout = $Config->{TIMEOUT};
 
@@ -477,7 +485,7 @@ sub authenticate {
         &radiusd::radlog( Info, "urlparam $_ \n" ) for ( keys %params );
     }
 
-    my $ua     = LWP::UserAgent->new();
+    my $ua = LWP::UserAgent->new();
     $ua->env_proxy;
     $ua->timeout($timeout);
     &radiusd::radlog( Info, "Request timeout: $timeout " );
@@ -485,13 +493,23 @@ sub authenticate {
     $ua->agent("FreeRADIUS");
     if ($check_ssl == false) {
         try {
-            # This is only availble with with LWP version 6
+            # This is only availble with LWP version 6
             &radiusd::radlog( Info, "Not verifying SSL certificate!" );
             $ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0x00 );
         } catch {
             &radiusd::radlog( Error, "ssl_opts only supported with LWP 6. error: $@" );
         }
     }
+    if ($check_ssl == true) {
+        try {
+            &radiusd::radlog( Info, "Verifying SSL certificate!" );
+            &radiusd::radlog( Info, "ssl_ca_path: $SSL_CA_PATH" );
+            $ua->ssl_opts( SSL_ca_path => $SSL_CA_PATH, verify_hostname => 1 );
+        } catch {
+            &radiusd::radlog( Error, "SSL_CA_PATH parameter is missing!!!" );
+        }
+    }
+
     my $starttime = [gettimeofday];
     my $response = $ua->post( $URL, \%params );
     my $content  = $response->decoded_content();
