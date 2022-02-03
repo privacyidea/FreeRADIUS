@@ -256,7 +256,7 @@ foreach my $file (@CONFIG_FILES) {
         $Config->{SPLIT_NULL_BYTE} = $cfg_file->val("Default", "SPLIT_NULL_BYTE");
         $Config->{ADD_EMPTY_PASS} = $cfg_file->val("Default", "ADD_EMPTY_PASS");
         $Config->{SSL_CHECK} = $cfg_file->val("Default", "SSL_CHECK");
-		$Config->{SSL_CA_PATH} = $cfg_file->val("Default", "SSL_CA_PATH");
+	$Config->{SSL_CA_PATH} = $cfg_file->val("Default", "SSL_CA_PATH");
         $Config->{TIMEOUT} = $cfg_file->val("Default", "TIMEOUT", 10);
         $Config->{CLIENTATTRIBUTE} = $cfg_file->val("Default", "CLIENTATTRIBUTE");
     }
