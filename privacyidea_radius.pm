@@ -376,9 +376,7 @@ sub authenticate {
     if ( $Config->{SSL_CHECK} =~ /true/i ) {
         $check_ssl = true;
     }
-
     &radiusd::radlog( Info, "Verifying SSL certificate: ". $Config->{SSL_CHECK} );
-
     &radiusd::radlog( Info, "Default SSL_CA_PATH is: ". $Config->{SSL_CA_PATH} );
 
     my $timeout = $Config->{TIMEOUT};
