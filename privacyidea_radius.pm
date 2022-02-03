@@ -163,7 +163,6 @@ use Time::HiRes qw( gettimeofday tv_interval );
 use URI::Encode;
 use Encode::Guess;
 
-
 # use ...
 # This is very important ! Without this script will not get the filled hashes from main.
 use vars qw(%RAD_REQUEST %RAD_REPLY %RAD_CHECK %RAD_CONFIG %RAD_PERLCONF);
