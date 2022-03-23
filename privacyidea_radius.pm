@@ -163,6 +163,7 @@ use Time::HiRes qw( gettimeofday tv_interval );
 use URI::Encode;
 use Encode::Guess;
 
+
 # use ...
 # This is very important ! Without this script will not get the filled hashes from main.
 use vars qw(%RAD_REQUEST %RAD_REPLY %RAD_CHECK %RAD_CONFIG %RAD_PERLCONF);
@@ -235,7 +236,6 @@ $Config->{CLIENTATTRIBUTE} = '';
 $Config->{RESCONF} = "";
 $Config->{Debug}   = "FALSE";
 $Config->{SSL_CHECK} = "FALSE";
-$Config->{SSL_CA_PATH} = '';
 $Config->{TIMEOUT} = 10;
 $Config->{SPLIT_NULL_BYTE} = "FALSE";
 $Config->{ADD_EMPTY_PASS} = "FALSE";
@@ -256,7 +256,7 @@ foreach my $file (@CONFIG_FILES) {
         $Config->{SPLIT_NULL_BYTE} = $cfg_file->val("Default", "SPLIT_NULL_BYTE");
         $Config->{ADD_EMPTY_PASS} = $cfg_file->val("Default", "ADD_EMPTY_PASS");
         $Config->{SSL_CHECK} = $cfg_file->val("Default", "SSL_CHECK");
-	$Config->{SSL_CA_PATH} = $cfg_file->val("Default", "SSL_CA_PATH");
+        $Config->{SSL_CA_PATH} = $cfg_file->val("Default", "SSL_CA_PATH");
         $Config->{TIMEOUT} = $cfg_file->val("Default", "TIMEOUT", 10);
         $Config->{CLIENTATTRIBUTE} = $cfg_file->val("Default", "CLIENTATTRIBUTE");
     }
@@ -376,8 +376,10 @@ sub authenticate {
     if ( $Config->{SSL_CHECK} =~ /true/i ) {
         $check_ssl = true;
     }
+
     &radiusd::radlog( Info, "Verifying SSL certificate: ". $Config->{SSL_CHECK} );
-    &radiusd::radlog( Info, "Default SSL_CA_PATH is: ". $Config->{SSL_CA_PATH} );
+
+    #&radiusd::radlog( Info, "Default SSL_CA_PATH is: ". $Config->{SSL_CA_PATH} );
 
     my $timeout = $Config->{TIMEOUT};
 
@@ -500,10 +502,17 @@ sub authenticate {
     if ($check_ssl == true) {
         try {
             &radiusd::radlog( Info, "Verifying SSL certificate!" );
-            &radiusd::radlog( Info, "ssl_ca_path: $SSL_CA_PATH" );
-            $ua->ssl_opts( SSL_ca_path => $SSL_CA_PATH, verify_hostname => 1 );
+	    if (exists ( $Config->{SSL_CA_PATH} ) ) {
+			if ( length $SSL_CA_PATH ) {
+            		    &radiusd::radlog( Info, "SSL_CA_PATH: $SSL_CA_PATH" );
+			    $ua->ssl_opts( SSL_ca_path => $SSL_CA_PATH, verify_hostname => 1 );
+			} elsif ( ! length $SSL_CA_PATH ) {
+			    &radiusd::radlog( Info, "Verifying SSL certificate against system wide CAs!" );
+			    $ua->ssl_opts( verify_hostname => 1 );
+			}
+	    }
         } catch {
-            &radiusd::radlog( Error, "SSL_CA_PATH parameter is missing!!!" );
+            &radiusd::radlog( Error, "Something went wrong or something is missing!!!" );
         }
     }
 
