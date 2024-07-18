@@ -441,6 +441,12 @@ sub authenticate {
     } elsif ( $Config->{ADD_EMPTY_PASS} =~ /true/i ) {
         $params{"pass"} = "";
     }
+
+    # Security enhancement sned Message-Authenticator back
+    if ( exists( $RAD_REQUEST{'Message-Authenticator'} )) {
+        $RAD_REPLY{'Message-Authenticator'} = $RAD_REQUEST{'Message-Authenticator'};
+    }
+
     # URL encode username and password
     my $uri = URI::Encode->new( { encode_reserved => 0 } );
     $params{"user"} = $uri->encode($params{"user"});
