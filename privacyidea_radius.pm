@@ -422,6 +422,7 @@ sub authenticate {
     if ( exists( $RAD_REQUEST{'Stripped-User-Name'} )) {
         $params{"user"} = $RAD_REQUEST{'Stripped-User-Name'};
     }
+
     if ( exists( $RAD_REQUEST{'User-Password'} ) ) {
         my $password = $RAD_REQUEST{'User-Password'};
         if ( $Config->{SPLIT_NULL_BYTE} =~ /true/i ) {
@@ -440,6 +441,18 @@ sub authenticate {
         $params{"pass"} = $password;
     } elsif ( $Config->{ADD_EMPTY_PASS} =~ /true/i ) {
         $params{"pass"} = "";
+    }
+
+    # We need to decode the username as well since it might contain special chars
+    if ( exists( $params{"user"} ) ) {
+        my $decoder = Encode::Guess->guess($params{"user"});
+        if ( ! ref($decoder) ) {
+            radiusd::radlog( Info, "Could not find valid username encoding. Sending username as-is." );
+            radiusd::radlog( Debug, $decoder );
+        } else {
+            &radiusd::radlog( Info, "Username encoding guessed: " . $decoder->name);
+            $params{"user"} = $decoder->decode($params{"user"});
+        }
     }
 
     # Security enhancement sned Message-Authenticator back
@@ -500,23 +513,29 @@ sub authenticate {
             &radiusd::radlog( Info, "Not verifying SSL certificate!" );
             $ua->ssl_opts( verify_hostname => 0, SSL_verify_mode => 0x00 );
         } catch {
-            &radiusd::radlog( Error, "ssl_opts only supported with LWP 6. error: $@" );
+            &radiusd::radlog( Error, "ssl_opts only supported with LWP 6. error: $_" );
         }
-    }
-    if ($check_ssl == true) {
+    } else {
         try {
             &radiusd::radlog( Info, "Verifying SSL certificate!" );
-	    if (exists ( $Config->{SSL_CA_PATH} ) ) {
-			if ( length $SSL_CA_PATH ) {
-            		    &radiusd::radlog( Info, "SSL_CA_PATH: $SSL_CA_PATH" );
-			    $ua->ssl_opts( SSL_ca_path => $SSL_CA_PATH, verify_hostname => 1 );
-			} elsif ( ! length $SSL_CA_PATH ) {
-			    &radiusd::radlog( Info, "Verifying SSL certificate against system wide CAs!" );
-			    $ua->ssl_opts( verify_hostname => 1 );
-			}
-	    }
-        } catch {
-            &radiusd::radlog( Error, "Something went wrong or something is missing!!!" );
+            if ( exists( $Config->{SSL_CA_PATH} ) ) {
+                if ( length $SSL_CA_PATH ) {
+                    &radiusd::radlog( Info, "SSL_CA_PATH: $SSL_CA_PATH" );
+                    $ua->ssl_opts(
+                        SSL_ca_path => $SSL_CA_PATH,
+                        verify_hostname => 1
+                    );
+                }
+                else {
+                    &radiusd::radlog( Info,
+                        "Verifying SSL certificate against system wide CAs!" );
+                    $ua->ssl_opts( verify_hostname => 1 );
+                }
+            }
+        }
+        catch {
+            &radiusd::radlog( Error,
+                "Something went wrong setting up SSL certificate verification: $_" );
         }
     }
 

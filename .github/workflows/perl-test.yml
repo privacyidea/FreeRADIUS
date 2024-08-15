@@ -18,14 +18,15 @@ jobs:
       matrix:
         perl-version:
           - "5.16"  # CentOS 7
-          - "5.26"  # Ubuntu 18.04
+          - "5.26"  # Ubuntu 18.04 / RHEL8
           - "5.30"  # Ubuntu 20.04
+          - "5.34"  # Ubuntu 22.04
 
     container:
       image: perldocker/perl-tester:${{ matrix.perl-version }}
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: uses install-with-cpanm
         uses: perl-actions/install-with-cpanm@v1
         with:
