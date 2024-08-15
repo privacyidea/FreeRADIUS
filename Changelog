@@ -1,3 +1,10 @@
+Version 3.4.3, 2024-08-15
+
+  * Guess encoding of username to better handle special characters
+  * Add SSL check using a CA path parameter (#59) by @lferrarotti74
+  * Add "Message-Authenticator" to reply to mitigate CVE-2024-3596 (#67) by
+    @basvandervlies
+
 Version 3.4.2, 2021-08-26
 
   * Better logging
