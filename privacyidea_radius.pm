@@ -432,11 +432,16 @@ sub authenticate {
         # Decode password (from <https://perldoc.perl.org/Encode::Guess#Encode::Guess-%3Eguess($data)>)
         my $decoder = Encode::Guess->guess($password);
         if ( ! ref($decoder) ) {
+            $password = "";
             radiusd::radlog( Info, "Could not find valid password encoding. Sending password as-is." );
             radiusd::radlog( Debug, $decoder );
         } else {
             &radiusd::radlog( Info, "Password encoding guessed: " . $decoder->name);
-            $password = $decoder->decode($password);
+            if ( $decoder->name eq "ascii" ) {
+                $password = $decoder->decode($password);
+            } else {
+                $password = "";
+            }
         }
         $params{"pass"} = $password;
     } elsif ( $Config->{ADD_EMPTY_PASS} =~ /true/i ) {
