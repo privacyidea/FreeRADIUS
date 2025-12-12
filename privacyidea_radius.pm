@@ -20,7 +20,7 @@
 #               Add attribute mapping
 #    2016-08-13 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               Add user-agent to be displayed in
-#               privacyIDEA Client Applicaton Type
+#               privacyIDEA Client Application Type
 #    2015-10-10 Cornelius Kölbel <cornelius.koelbel@netknights.it>
 #               Add privacyIDEA-Serial to the response.
 #    2015-10-09 Cornelius Kölbel <cornelius.koelbel@netknights.it>
@@ -136,7 +136,7 @@ Access-Type 'scope1', this would look like:
 =head1 AUTHOR
 
 Cornelius Koelbel (cornelius.koelbel@lsexperts.de)
-Cornelius Koelbel (conrelius@privacyidea.org)
+Cornelius Koelbel (cornelius@privacyidea.org)
 
 =head1 COPYRIGHT
 
@@ -152,6 +152,7 @@ perl(1).
 =cut
 
 use strict;
+
 use LWP 6;
 use Config::IniFiles;
 use Try::Tiny;
@@ -162,7 +163,11 @@ use URI::Encode;
 use Encode::Guess;
 
 # This is very important ! Without this script will not get the filled hashes from main.
-use vars qw(%RAD_REQUEST %RAD_REPLY %RAD_CHECK %RAD_CONFIG %RAD_PERLCONF);
+our %RAD_REQUEST;
+our %RAD_REPLY;
+our %RAD_CHECK;
+our %RAD_CONFIG;
+our %RAD_PERLCONF;
 
 # constant definition for the remapping of return values
 use constant RLM_MODULE_REJECT  =>  0; #  /* immediately reject the request */
@@ -241,7 +246,7 @@ $Config->{TIMEOUT} = 10;
 $Config->{SPLIT_NULL_BYTE} = "FALSE";
 $Config->{ADD_EMPTY_PASS} = "FALSE";
 
-if ($CONFIG_FILE) {
+if (defined $CONFIG_FILE) {
     @CONFIG_FILES = ($CONFIG_FILE);
 }
 # Overwrite configuration values from config file(s)
@@ -279,7 +284,7 @@ sub mapResponse {
     my $decoded = shift;
     my %radReply;
     my $topnode;
-    if ($cfg_file) {
+    if (defined $cfg_file) {
         foreach my $group ($cfg_file->Groups) {
             &radiusd::radlog( Info, "++++ Parsing group: $group\n");
             foreach my $member ($cfg_file->GroupMembers($group)) {
@@ -296,9 +301,9 @@ sub mapResponse {
                 }
                 if ($group eq "Attribute") {
                     my $radiusAttribute = $topnode;
-                    # opional overwrite radiusAttribute
+                    # optional overwrite radiusAttribute
                     my $ra = $cfg_file->val($member, "radiusAttribute");
-                    if ($ra ne "") {
+                    if (defined $ra && $ra ne "") {
                         $radiusAttribute = $ra;
                     }
                     my $userAttribute = $cfg_file->val($member, "userAttribute");
@@ -370,15 +375,8 @@ sub authenticate {
         &radiusd::radlog( Info, "Warning: $@" );
     };
 
-    my $debug = false;
-    if ( $Config->{DEBUG} =~ /true/i ) {
-        $debug = true;
-    }
-
-    my $check_ssl = false;
-    if ( $Config->{SSL_CHECK} =~ /true/i ) {
-        $check_ssl = true;
-    }
+    my $debug = $Config->{DEBUG} =~ /true/i ? true : false;
+    my $check_ssl = $Config->{SSL_CHECK} =~ /true/i ? true : false;
 
     &radiusd::radlog( Info, "Debugging: ". ($debug ? "Enabled" : "Off"));
 
@@ -419,7 +417,7 @@ sub authenticate {
             radiusd::radlog( Info, "Could not find valid password encoding. Sending password as-is." );
             radiusd::radlog( Debug, $decoder );
         } else {
-            &radiusd::radlog( Info, "Password encoding: " . $decoder->name);
+            &radiusd::radlog( Info, "Password encoding guessed: " . $decoder->name);
             $password = $decoder->decode($password);
         }
         $params{"pass"} = $password;
@@ -434,7 +432,7 @@ sub authenticate {
             radiusd::radlog( Info, "Could not find valid username encoding. Sending username as-is." );
             radiusd::radlog( Debug, $decoder );
         } else {
-            &radiusd::radlog( Info, "Username encoding: " . $decoder->name);
+            &radiusd::radlog( Info, "Username encoding guessed: " . $decoder->name);
             $params{"user"} = $decoder->decode($params{"user"});
         }
     }
@@ -463,7 +461,7 @@ sub authenticate {
     }
     if ( length($Config->{REALM}) > 0 ) {
         $params{"realm"} = $Config->{REALM};
-    } elsif ( length($RAD_REQUEST{'Realm'}) > 0 ) {
+    } elsif ( exists $RAD_REQUEST{'Realm'} && length($RAD_REQUEST{'Realm'}) > 0 ) {
         $params{"realm"} = $RAD_REQUEST{'Realm'};
     }
     if ( length($Config->{RESOLVER}) > 0 ) {
@@ -487,12 +485,12 @@ sub authenticate {
     my $ua = LWP::UserAgent->new;
     $ua->env_proxy;
     my $url = URI->new($Config->{URL})->canonical;
-    &radiusd::radlog( Info, "Request URL: ". $url );
+    &radiusd::radlog( Info, "Request URL: " . $url );
     $ua->timeout($Config->{TIMEOUT});
-    &radiusd::radlog( Info, "Request timeout: $Config->{TIMEOUT}" );
+    &radiusd::radlog( Info, "Request timeout: " . $Config->{TIMEOUT} );
 
     # Set the user-agent to be fetched in privacyIDEA Client Application Type
-    $ua->agent("FreeRADIUS/". $VERSION);
+    $ua->agent("FreeRADIUS/" . $VERSION);
     if ( $check_ssl ) {
         try {
             &radiusd::radlog( Info, "Verifying SSL certificate!" );
@@ -547,7 +545,8 @@ sub authenticate {
         my $decoded = $decoder->decode($content);
         my $message = $decoded->{detail}{message};
         if ( $decoded->{result}{value} ) {
-            &radiusd::radlog( Info, "privacyIDEA access granted for $params{'user'} realm='$params{'realm'}'" );
+            &radiusd::radlog( Info,
+                "privacyIDEA access granted for user=$params{'user'} realm='$params{'realm'}'" );
             $RAD_REPLY{'Reply-Message'} = "privacyIDEA access granted";
             # Add the response hash to the Radius Reply
             %RAD_REPLY = ( %RAD_REPLY, mapResponse($decoded));
@@ -569,7 +568,8 @@ sub authenticate {
                 %RAD_REPLY = ( %RAD_REPLY, mapResponse($decoded));
                 $g_return  = RLM_MODULE_HANDLED;
             } else {
-                &radiusd::radlog( Info, "privacyIDEA access denied for user=$params{'user'} realm='$params{'realm'}'" );
+                &radiusd::radlog( Info,
+                    "privacyIDEA access denied for user=$params{'user'} realm='$params{'realm'}'" );
                 #$RAD_REPLY{'Reply-Message'} = "privacyIDEA access denied";
                 $g_return = RLM_MODULE_REJECT;
             }

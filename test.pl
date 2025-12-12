@@ -97,7 +97,7 @@ $RAD_REQUEST{'NAS-IP-Address'} = "192.0.2.23";
     like ( $stdout, qr{Request URL: https://localhost/validate/check}, "Check for correct URL in log output" );
     is ( $result, 2, 'Authentication result should be 2 (RLM_MODULE_OK).' );
     ok ( exists $RAD_REPLY{'Reply-Message'}, 'Check Reply-Message attribute in RAD_REPLY.');
-    is ( $RAD_REPLY{'Reply-Message'}, "privacyIDEA access granted" );
+    is ( $RAD_REPLY{'Reply-Message'}, "privacyIDEA access granted", "Check Reply-Message attribute contents." );
 }
 
 is( preacct(), 2, 'Check "preacct" function in script (Should return RLM_MODULE_OK).' );
