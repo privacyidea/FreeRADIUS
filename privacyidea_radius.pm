@@ -239,6 +239,9 @@ $Config->{SSL_CHECK} = "FALSE";
 $Config->{TIMEOUT} = 10;
 $Config->{SPLIT_NULL_BYTE} = "FALSE";
 $Config->{ADD_EMPTY_PASS} = "FALSE";
+# Arbitrary extra HTTP headers, populated from the `[Headers]` section of the
+# config file. Primarily intended for setting `PI-Authorization`.
+$Config->{HEADERS} = {};
 
 if ($CONFIG_FILE) {
     @CONFIG_FILES = ($CONFIG_FILE);
@@ -259,6 +262,11 @@ foreach my $file (@CONFIG_FILES) {
         $Config->{SSL_CA_PATH} = $cfg_file->val("Default", "SSL_CA_PATH");
         $Config->{TIMEOUT} = $cfg_file->val("Default", "TIMEOUT", 10);
         $Config->{CLIENTATTRIBUTE} = $cfg_file->val("Default", "CLIENTATTRIBUTE");
+        # Read headers from [Headers] section (absent = empty list).
+        $Config->{HEADERS} = {
+            map { $_ => $cfg_file->val("Headers", $_) }
+                $cfg_file->Parameters("Headers")
+        };
     }
 }
 
@@ -575,8 +583,11 @@ sub authenticate {
         }
     }
 
+    &radiusd::radlog( Debug, "Adding custom header: $_" )
+        for sort keys %{ $Config->{HEADERS} };
+
     my $starttime = [gettimeofday];
-    my $response = $ua->post( $URL, \%params );
+    my $response = $ua->post( $URL, \%params, %{ $Config->{HEADERS} } );
     my $content  = $response->decoded_content();
     my $elapsedtime = tv_interval($starttime);
     &radiusd::radlog( Info, "elapsed time for privacyidea call: $elapsedtime" );
