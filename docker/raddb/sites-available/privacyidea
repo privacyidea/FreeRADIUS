@@ -1,0 +1,41 @@
+server privacyidea {
+    listen {
+        type = auth
+        ipaddr = *
+        port = 1812
+    }
+    listen {
+        type = acct
+        ipaddr = *
+        port = 1813
+    }
+
+    authorize {
+        # Run the privacyIDEA perl module (its authorize sub returns ok),
+        # then force Auth-Type so authentication is handled by the module.
+        perl-privacyidea
+        if (ok || updated) {
+            update control {
+                &Auth-Type := Perl
+            }
+        }
+    }
+
+    authenticate {
+        Auth-Type Perl {
+            perl-privacyidea
+        }
+    }
+
+    preacct {
+    }
+
+    accounting {
+        perl-privacyidea
+    }
+
+    post-auth {
+        Post-Auth-Type REJECT {
+        }
+    }
+}

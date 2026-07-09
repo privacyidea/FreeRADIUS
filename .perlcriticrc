@@ -1,0 +1,12 @@
+# Perl::Critic config for the privacyIDEA FreeRADIUS module.
+# severity 5 = report only the most serious issues (a pragmatic gate for a
+# legacy rlm_perl module). Raise the strictness (lower the number) over time.
+severity = 5
+
+# The following only fire on xlat() / detach(), which are verbatim upstream
+# rlm_perl example boilerplate (load + eval an external perl file). They are not
+# part of the privacyIDEA logic, so exclude the policies rather than rewrite the
+# example. Remove these exclusions if xlat() is ever cleaned up or dropped.
+[-InputOutput::ProhibitBarewordFileHandles]
+[-InputOutput::ProhibitTwoArgOpen]
+[-BuiltinFunctions::ProhibitStringyEval]

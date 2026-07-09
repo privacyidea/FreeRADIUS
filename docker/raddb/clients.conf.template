@@ -1,0 +1,7 @@
+# Rendered at container start by entrypoint.sh (envsubst).
+# Restrict RADIUS_CLIENT_NET to your NAS network(s) in production.
+client default {
+    ipaddr = $RADIUS_CLIENT_NET
+    secret = $RADIUS_CLIENT_SECRET
+    require_message_authenticator = no
+}

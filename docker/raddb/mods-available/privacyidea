@@ -1,0 +1,6 @@
+perl perl-privacyidea {
+    filename = /usr/share/privacyidea/freeradius/privacyidea_radius.pm
+    config {
+        configfile = /etc/raddb/rlm_perl.ini
+    }
+}

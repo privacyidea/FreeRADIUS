@@ -239,6 +239,13 @@ $Config->{SSL_CHECK} = "FALSE";
 $Config->{TIMEOUT} = 10;
 $Config->{SPLIT_NULL_BYTE} = "FALSE";
 $Config->{ADD_EMPTY_PASS} = "FALSE";
+# Server-side polling for push tokens via /validate/polltransaction.
+# When POLL is enabled and privacyIDEA returns a "poll" client_mode challenge
+# (i.e. a push token), the module polls privacyIDEA for confirmation instead of
+# returning an Access-Challenge with an (empty) input field to the RADIUS client.
+$Config->{POLL} = "FALSE";
+$Config->{POLL_TIMEOUT} = 60;
+$Config->{POLL_INTERVAL} = 3;
 
 if ($CONFIG_FILE) {
     @CONFIG_FILES = ($CONFIG_FILE);
@@ -259,6 +266,9 @@ foreach my $file (@CONFIG_FILES) {
         $Config->{SSL_CA_PATH} = $cfg_file->val("Default", "SSL_CA_PATH");
         $Config->{TIMEOUT} = $cfg_file->val("Default", "TIMEOUT", 10);
         $Config->{CLIENTATTRIBUTE} = $cfg_file->val("Default", "CLIENTATTRIBUTE");
+        $Config->{POLL} = $cfg_file->val("Default", "POLL", "FALSE");
+        $Config->{POLL_TIMEOUT} = $cfg_file->val("Default", "POLL_TIMEOUT", 60);
+        $Config->{POLL_INTERVAL} = $cfg_file->val("Default", "POLL_INTERVAL", 3);
     }
 }
 
@@ -353,6 +363,89 @@ sub mapResponse {
     return %radReply;
 }
 
+sub poll_push {
+    # Server-side polling for push confirmation via /validate/polltransaction.
+    #
+    # This is used instead of returning an Access-Challenge for "poll" type push
+    # tokens, so the RADIUS client does not prompt the user for input the user
+    # cannot provide. The privacyIDEA server is NOT blocked (we poll instead of
+    # relying on the server-side push_wait), but this DOES block the FreeRADIUS
+    # worker thread for up to $timeout seconds - the accepted trade-off on
+    # FreeRADIUS 3. Make sure the NAS request timeout is raised accordingly and
+    # that the thread pool is sized for the expected number of concurrent pushes.
+    my ( $ua, $url, $params, $transaction_id, $timeout, $interval ) = @_;
+
+    my $poll_url = $url;
+    $poll_url =~ s{/validate/check$}{/validate/polltransaction};
+
+    my $coder = JSON->new->ascii->pretty->allow_nonref;
+    my $waited = 0;
+    $interval = 1 if ( !$interval || $interval <= 0 );
+
+    &radiusd::radlog( Info, "Push token: polling transaction $transaction_id for up to $timeout seconds" );
+
+    while ( $waited < $timeout ) {
+        my $resp = $ua->get( "$poll_url?transaction_id=$transaction_id" );
+        if ( $resp->is_success ) {
+            my $pdec = eval { $coder->decode( $resp->decoded_content ) };
+            if ( $pdec ) {
+                my $cstatus = $pdec->{detail}{challenge_status} || "";
+                if ( $pdec->{result}{value} ) {
+                    # Confirmed on the phone -> finalize with an empty-pass check.
+                    &radiusd::radlog( Info, "Push confirmed (status='$cstatus'), finalizing $transaction_id" );
+                    return finalize_transaction( $ua, $url, $params, $transaction_id );
+                } elsif ( $cstatus eq "declined" ) {
+                    # User declined on the phone -> reject, no point in polling on.
+                    &radiusd::radlog( Info, "Push declined for $transaction_id" );
+                    $RAD_REPLY{'Reply-Message'} = "privacyIDEA push declined";
+                    return RLM_MODULE_REJECT;
+                }
+                # challenge_status "pending" (or unknown) -> keep polling.
+            } else {
+                &radiusd::radlog( Info, "Could not parse polltransaction response" );
+            }
+        } else {
+            &radiusd::radlog( Info, "polltransaction request failed: ". $resp->status_line );
+        }
+        sleep( $interval );
+        $waited += $interval;
+    }
+
+    # Timed out. Fall back to an Access-Challenge so the transaction can still be
+    # completed on a subsequent request (e.g. a client that re-submits).
+    &radiusd::radlog( Info, "Push not confirmed within $timeout seconds, issuing challenge" );
+    $RAD_REPLY{'State'} = $transaction_id;
+    $RAD_CHECK{'Response-Packet-Type'} = "Access-Challenge";
+    return RLM_MODULE_HANDLED;
+}
+
+sub finalize_transaction {
+    # Complete a confirmed push by sending an empty-pass /validate/check with the
+    # transaction_id. privacyIDEA replies with result->value true on success.
+    my ( $ua, $url, $params, $transaction_id ) = @_;
+
+    my $coder = JSON->new->ascii->pretty->allow_nonref;
+    # $params->{user} is already URL-encoded (as in the main request path).
+    my %fin = (
+        user           => $params->{user},
+        transaction_id => $transaction_id,
+        pass           => "",
+    );
+
+    my $resp = $ua->post( $url, \%fin );
+    my $fdec = eval { $coder->decode( $resp->decoded_content ) };
+    if ( $fdec && $fdec->{result}{value} ) {
+        &radiusd::radlog( Info, "privacyIDEA access granted (push) for $params->{user}" );
+        $RAD_REPLY{'Reply-Message'} = "privacyIDEA access granted";
+        %RAD_REPLY = ( %RAD_REPLY, mapResponse($fdec) );
+        return RLM_MODULE_OK;
+    }
+
+    &radiusd::radlog( Info, "privacyIDEA denied access on push finalize for $params->{user}" );
+    $RAD_REPLY{'Reply-Message'} = "privacyIDEA access denied";
+    return RLM_MODULE_REJECT;
+}
+
 # Function to handle authenticate
 sub authenticate {
 
@@ -371,6 +464,9 @@ sub authenticate {
     my $SSL_CA_PATH     = $Config->{SSL_CA_PATH};
     my $TIMEOUT         = $Config->{TIMEOUT};
     my $CLIENTATTRIBUTE = $Config->{CLIENTATTRIBUTE};
+    my $POLL            = $Config->{POLL};
+    my $poll_timeout    = $Config->{POLL_TIMEOUT};
+    my $poll_interval   = $Config->{POLL_INTERVAL};
 
     my $debug   = false;
     if ( $Config->{Debug} =~ /true/i ) {
@@ -429,10 +525,27 @@ sub authenticate {
             $Config->{CLIENTATTRIBUTE} = $cfg_file->val( $auth_type, "CLIENTATTRIBUTE" );
             &radiusd::radlog(Debug, "Overwriting CLIENTATTRIBUTE to ". $Config->{CLIENTATTRIBUTE} ." based on auth-type: ". $auth_type);
         }
+        if ( ( $cfg_file->val( $auth_type, "POLL") )) {
+            $POLL = $cfg_file->val( $auth_type, "POLL" );
+            &radiusd::radlog(Debug, "Overwriting POLL to ". $POLL ." based on auth-type: ". $auth_type);
+        }
+        if ( ( $cfg_file->val( $auth_type, "POLL_TIMEOUT") )) {
+            $poll_timeout = $cfg_file->val( $auth_type, "POLL_TIMEOUT" );
+            &radiusd::radlog(Debug, "Overwriting POLL_TIMEOUT to ". $poll_timeout ." based on auth-type: ". $auth_type);
+        }
+        if ( ( $cfg_file->val( $auth_type, "POLL_INTERVAL") )) {
+            $poll_interval = $cfg_file->val( $auth_type, "POLL_INTERVAL" );
+            &radiusd::radlog(Debug, "Overwriting POLL_INTERVAL to ". $poll_interval ." based on auth-type: ". $auth_type);
+        }
     }
     catch {
         &radiusd::radlog( Info, "Warning: $@" );
     };
+
+    my $poll_enabled = false;
+    if ( defined($POLL) && $POLL =~ /true/i ) {
+        $poll_enabled = true;
+    }
 
  	&radiusd::radlog( Info, "Debugging config: ". $Config->{Debug});
     	&radiusd::radlog( Info, "Verifying SSL certificate: ". $Config->{SSL_CHECK} );
@@ -608,17 +721,29 @@ sub authenticate {
             &radiusd::radlog( Info, "privacyIDEA Result status is true!" );
             $RAD_REPLY{'Reply-Message'} = $decoded->{detail}{message};
             if ( $decoded->{detail}{transaction_id} ) {
-                ## we are in challenge response mode:
-                ## 1. split the response in fail, state and challenge
-                ## 2. show the client the challenge and the state
-                ## 3. get the response and
-                ## 4. submit the response and the state to linotp and
-                ## 5. reply ok or reject
-                $RAD_REPLY{'State'} = $decoded->{detail}{transaction_id};
-                $RAD_CHECK{'Response-Packet-Type'} = "Access-Challenge";
-                # Add the response hash to the Radius Reply
-                %RAD_REPLY = ( %RAD_REPLY, mapResponse($decoded));
-                $g_return  = RLM_MODULE_HANDLED;
+                my $transaction_id = $decoded->{detail}{transaction_id};
+                my $client_mode = $decoded->{detail}{client_mode} || "";
+                if ( $poll_enabled == true && $client_mode eq "poll" ) {
+                    ## Push token: poll privacyIDEA for confirmation instead of
+                    ## returning an Access-Challenge. This avoids showing the user
+                    ## an empty input field for a token that expects no input.
+                    ## NOTE: this blocks the FreeRADIUS worker thread for up to
+                    ## POLL_TIMEOUT seconds (see poll_push).
+                    $g_return = poll_push( $ua, $URL, \%params, $transaction_id,
+                                           $poll_timeout, $poll_interval );
+                } else {
+                    ## we are in challenge response mode:
+                    ## 1. split the response in fail, state and challenge
+                    ## 2. show the client the challenge and the state
+                    ## 3. get the response and
+                    ## 4. submit the response and the state to linotp and
+                    ## 5. reply ok or reject
+                    $RAD_REPLY{'State'} = $transaction_id;
+                    $RAD_CHECK{'Response-Packet-Type'} = "Access-Challenge";
+                    # Add the response hash to the Radius Reply
+                    %RAD_REPLY = ( %RAD_REPLY, mapResponse($decoded));
+                    $g_return  = RLM_MODULE_HANDLED;
+                }
             } else {
                 &radiusd::radlog( Info, "privacyIDEA access denied for $params{'user'} realm='$params{'realm'}'" );
                 #$RAD_REPLY{'Reply-Message'} = "privacyIDEA access denied";
