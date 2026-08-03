@@ -243,6 +243,9 @@ $Config->{ADD_EMPTY_PASS} = "FALSE";
 # When POLL is enabled and privacyIDEA returns a "poll" client_mode challenge
 # (i.e. a push token), the module polls privacyIDEA for confirmation instead of
 # returning an Access-Challenge with an (empty) input field to the RADIUS client.
+# This frees the scarce privacyIDEA (Apache/wsgi) workers that the push_wait
+# policy would otherwise hold open; a FreeRADIUS worker is still held for the
+# wait (as it was under push_wait). See poll_push.
 $Config->{POLL} = "FALSE";
 $Config->{POLL_TIMEOUT} = 60;
 $Config->{POLL_INTERVAL} = 3;

@@ -83,10 +83,16 @@ target takes precedence, or mount over the `.template` to keep templating.)
 
 ## Push polling caveat
 
-With `PI_POLL=true`, a push authentication holds a FreeRADIUS worker thread for
-up to `PI_POLL_TIMEOUT` seconds. This keeps your privacyIDEA server unblocked
-(no server-side `push_wait`) but means concurrent pushes consume worker threads.
-Raise `RADIUS_MAX_SERVERS` and your NAS request timeout accordingly.
+With `PI_POLL=true`, the module polls `/validate/polltransaction` instead of
+letting privacyIDEA hold the request open (`push_wait`). This frees the scarce
+privacyIDEA (Apache/wsgi) workers whose exhaustion otherwise takes the IdP down
+under push load — each poll is a short request rather than a 60s-held one.
+
+A FreeRADIUS worker is still occupied for the wait (as it already was under
+`push_wait`, which blocked both sides), so raise `RADIUS_MAX_SERVERS` and your
+NAS request timeout accordingly. The trade is a scarce, IdP-wide resource for a
+cheaper RADIUS-only one; user experience is unchanged from `push_wait` (single
+prompt, no empty input field).
 
 ## Debugging
 
