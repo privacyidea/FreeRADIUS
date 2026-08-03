@@ -7,7 +7,7 @@ COMPOSE="docker compose"
 SECRET="testing123"
 fail=0
 
-# shellcheck disable=SC2329  # invoked indirectly via trap
+# shellcheck disable=SC2317,SC2329  # invoked indirectly via trap (code varies by shellcheck version)
 cleanup() { $COMPOSE down -v >/dev/null 2>&1 || true; }
 trap cleanup EXIT
 

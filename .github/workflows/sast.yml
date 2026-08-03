@@ -53,7 +53,9 @@ jobs:
         with:
           persist-credentials: false
       - name: shellcheck
-        run: shellcheck docker/entrypoint.sh tests/integration.sh
+        # Pinned version via container so results are deterministic (the runner's
+        # preinstalled shellcheck version drifts and changes default findings).
+        run: docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.10.0 docker/entrypoint.sh tests/integration.sh
 
   image-scan:
     runs-on: ubuntu-latest
