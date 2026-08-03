@@ -29,7 +29,7 @@ COPY dictionary.netknights /etc/raddb/dictionary.netknights
 COPY docker/entrypoint.sh /entrypoint.sh
 
 RUN set -eux; \
-    mkdir -p /etc/raddb/mods-enabled /etc/raddb/sites-enabled; \
+    mkdir -p /etc/raddb/mods-enabled /etc/raddb/sites-enabled /etc/raddb/clients.d; \
     ln -sf ../mods-available/privacyidea  /etc/raddb/mods-enabled/privacyidea; \
     ln -sf ../sites-available/privacyidea /etc/raddb/sites-enabled/privacyidea; \
     chmod +x /entrypoint.sh
@@ -48,7 +48,9 @@ ENV PI_URL=https://localhost/validate/check \
     PI_ADD_EMPTY_PASS=false \
     PI_SPLIT_NULL_BYTE=false \
     PI_CLIENTATTRIBUTE= \
-    RADIUS_CLIENT_NET=0.0.0.0/0
+    RADIUS_CLIENT_NET=0.0.0.0/0 \
+    RADIUS_REQUIRE_MSG_AUTH=yes \
+    RADIUS_MAX_SERVERS=64
 # RADIUS_CLIENT_SECRET is intentionally not defaulted here (avoids baking a
 # secret into image metadata); entrypoint.sh falls back to "testing123" for
 # local/dev if unset. Always set it at runtime for real deployments.

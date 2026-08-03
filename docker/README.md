@@ -39,20 +39,54 @@ the same options with their defaults, copy-paste ready).
 | `PI_ADD_EMPTY_PASS` | `false` | Send `pass=""` when no `User-Password` |
 | `PI_SPLIT_NULL_BYTE` | `false` | Keep only the first NUL-delimited password segment |
 | `PI_CLIENTATTRIBUTE` | *(empty)* | Request attribute to send as `client` |
-| `RADIUS_CLIENT_SECRET` | `testing123` | Shared secret for the RADIUS client |
-| `RADIUS_CLIENT_NET` | `0.0.0.0/0` | Allowed NAS network — **restrict this in production** |
+| `RADIUS_CLIENT_SECRET` | `testing123` | Shared secret for the default RADIUS client |
+| `RADIUS_CLIENT_NET` | `0.0.0.0/0` | Allowed NAS network for the default client — **restrict this in production** |
+| `RADIUS_REQUIRE_MSG_AUTH` | `yes` | Require Message-Authenticator (BlastRADIUS / CVE-2024-3596 mitigation). Use `auto` or `no` only for legacy NAS that cannot send it |
+| `RADIUS_MAX_SERVERS` | `64` | Worker-thread cap. A polling push holds a worker for the wait, so raise this for many concurrent pushes |
 
 `PI_*` values are rendered into `/etc/raddb/rlm_perl.ini` at container start
 (the Perl module reads that INI, not FreeRADIUS-native config, so this templating
-is how env vars reach it). `RADIUS_CLIENT_*` render into `clients.conf`.
+is how env vars reach it). `RADIUS_CLIENT_*` / `RADIUS_REQUIRE_MSG_AUTH` render
+into `clients.conf`, and `RADIUS_MAX_SERVERS` into `radiusd.conf`.
+
+## Multiple RADIUS clients (NAS devices)
+
+The env vars configure a **single** default client. For more than one NAS — each
+with its own IP and secret — mount FreeRADIUS `client { ... }` files into
+`/etc/raddb/clients.d/` (included automatically alongside the default client):
+
+```sh
+docker run ... \
+    -v /path/to/my-clients.conf:/etc/raddb/clients.d/my-clients.conf:ro \
+    privacyidea-freeradius
+```
+
+Put only valid FreeRADIUS client config in that directory — every file there is
+parsed as config.
+
+## Configuring anything else (escape hatch)
+
+Only the common options are env-driven. For anything the env vars don't cover
+(TLS/RadSec, EAP, proxying, custom policy, thread-pool internals, …), bind-mount
+your own file over the one in the image — the server runs `freeradius -d /etc/raddb`,
+so any file under `/etc/raddb` can be overridden:
+
+```sh
+docker run ... \
+    -v /path/to/radiusd.conf:/etc/raddb/radiusd.conf:ro \
+    privacyidea-freeradius
+```
+
+(Note the entrypoint renders `radiusd.conf` / `clients.conf` / `rlm_perl.ini`
+from their `.template` files at start; a read-only bind-mount over the rendered
+target takes precedence, or mount over the `.template` to keep templating.)
 
 ## Push polling caveat
 
 With `PI_POLL=true`, a push authentication holds a FreeRADIUS worker thread for
 up to `PI_POLL_TIMEOUT` seconds. This keeps your privacyIDEA server unblocked
 (no server-side `push_wait`) but means concurrent pushes consume worker threads.
-Size `thread pool { max_servers }` in `raddb/radiusd.conf` and raise your NAS
-request timeout accordingly.
+Raise `RADIUS_MAX_SERVERS` and your NAS request timeout accordingly.
 
 ## Debugging
 

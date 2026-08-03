@@ -31,6 +31,8 @@ services:
       # PI_ADD_EMPTY_PASS: "false"
       # PI_SPLIT_NULL_BYTE: "false"
       # PI_CLIENTATTRIBUTE: ""
+      # RADIUS_REQUIRE_MSG_AUTH: "yes"   # BlastRADIUS mitigation; "auto"/"no" for legacy NAS
+      # RADIUS_MAX_SERVERS: "64"         # worker threads (raise for many concurrent polls)
     ports:
       - "1812:1812/udp"
       - "1813:1813/udp"

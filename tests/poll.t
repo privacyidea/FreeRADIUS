@@ -43,13 +43,16 @@ my %params = (user => "alice");
 
 sub reset_reply { %main::RAD_REPLY = (); %main::RAD_CHECK = (); }
 
+# poll_push takes the decoded initial-check response; build a minimal one.
+sub decoded_with_tx { return { detail => { transaction_id => $_[0] } } }
+
 # 1) pending -> accept -> finalize -> OK
 reset_reply();
 {
     my $ua = FakeUA->new(FakeResp->new(ok => 1, body => $pending),
                          FakeResp->new(ok => 1, body => $accept))->set_post(
                          FakeResp->new(ok => 1, body => $finalok));
-    is(main::poll_push($ua, $URL, \%params, "TX1", 10, 1), RLM_MODULE_OK(),
+    is(main::poll_push($ua, $URL, \%params, decoded_with_tx("TX1"), 10, 1), RLM_MODULE_OK(),
        "pending then accept -> finalize -> OK");
 }
 
@@ -57,7 +60,7 @@ reset_reply();
 reset_reply();
 {
     my $ua = FakeUA->new(FakeResp->new(ok => 1, body => $declined));
-    is(main::poll_push($ua, $URL, \%params, "TX2", 10, 1), RLM_MODULE_REJECT(),
+    is(main::poll_push($ua, $URL, \%params, decoded_with_tx("TX2"), 10, 1), RLM_MODULE_REJECT(),
        "declined -> REJECT");
 }
 
@@ -67,7 +70,7 @@ reset_reply();
     my $ua = FakeUA->new(FakeResp->new(ok => 1, body => $pending),
                          FakeResp->new(ok => 1, body => $pending),
                          FakeResp->new(ok => 1, body => $pending));
-    is(main::poll_push($ua, $URL, \%params, "TX3", 2, 1), RLM_MODULE_HANDLED(),
+    is(main::poll_push($ua, $URL, \%params, decoded_with_tx("TX3"), 2, 1), RLM_MODULE_HANDLED(),
        "timeout -> Access-Challenge");
     is($main::RAD_REPLY{'State'}, "TX3", "timeout sets State to transaction_id");
 }
@@ -80,11 +83,18 @@ reset_reply();
        "finalize with value=false -> REJECT");
 }
 
-# 5) poll URL derivation
+# 5) finalize on transport failure -> FAIL (not REJECT) for an already-confirmed user
+reset_reply();
 {
-    my $u = "https://pi.example/path/validate/check";
-    (my $p = $u) =~ s{/validate/check$}{/validate/polltransaction};
-    is($p, "https://pi.example/path/validate/polltransaction", "poll URL derivation");
+    my $ua = FakeUA->new()->set_post(FakeResp->new(ok => 0, body => "<html>502</html>", status => "502 Bad Gateway"));
+    is(main::finalize_transaction($ua, $URL, \%params, "TX5"), RLM_MODULE_FAIL(),
+       "finalize on HTTP error -> FAIL");
 }
+
+# 6) poll URL derivation -- exercises the module's real poll_url(), incl. trailing slash
+is(main::poll_url("https://pi.example/path/validate/check"),
+   "https://pi.example/path/validate/polltransaction", "poll_url: plain");
+is(main::poll_url("https://pi.example/validate/check/"),
+   "https://pi.example/validate/polltransaction", "poll_url: trailing slash");
 
 done_testing();

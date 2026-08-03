@@ -1,7 +1,13 @@
 # Rendered at container start by entrypoint.sh (envsubst).
 # Restrict RADIUS_CLIENT_NET to your NAS network(s) in production.
+# For additional NAS clients, mount client-config files into /etc/raddb/clients.d/.
 client default {
     ipaddr = $RADIUS_CLIENT_NET
-    secret = $RADIUS_CLIENT_SECRET
-    require_message_authenticator = no
+    # Single-quoted so a secret containing '#', spaces, '${...}', etc. is taken
+    # literally (double quotes would trigger FreeRADIUS expansion/escaping).
+    secret = '$RADIUS_CLIENT_SECRET'
+    # BlastRADIUS (CVE-2024-3596) mitigation. Default "yes"; set
+    # RADIUS_REQUIRE_MSG_AUTH=auto (or no) only for legacy NAS that cannot send
+    # Message-Authenticator.
+    require_message_authenticator = $RADIUS_REQUIRE_MSG_AUTH
 }

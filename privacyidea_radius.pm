@@ -159,7 +159,7 @@ use Config::IniFiles;
 use Data::Dump;
 use Try::Tiny;
 use JSON;
-use Time::HiRes qw( gettimeofday tv_interval );
+use Time::HiRes qw( gettimeofday tv_interval sleep );
 use URI::Encode;
 use Encode::Guess;
 
@@ -363,6 +363,16 @@ sub mapResponse {
     return %radReply;
 }
 
+sub poll_url {
+    # Derive the /validate/polltransaction endpoint from the configured
+    # /validate/check URL. Tolerates a trailing slash and proxied path prefixes
+    # (e.g. https://host/pi/validate/check/). Returns the URL unchanged if it
+    # does not contain a /validate/check suffix (caller should warn).
+    my $url = shift;
+    ( my $poll = $url ) =~ s{/validate/check/?$}{/validate/polltransaction};
+    return $poll;
+}
+
 sub poll_push {
     # Server-side polling for push confirmation via /validate/polltransaction.
     #
@@ -373,19 +383,30 @@ sub poll_push {
     # worker thread for up to $timeout seconds - the accepted trade-off on
     # FreeRADIUS 3. Make sure the NAS request timeout is raised accordingly and
     # that the thread pool is sized for the expected number of concurrent pushes.
-    my ( $ua, $url, $params, $transaction_id, $timeout, $interval ) = @_;
+    my ( $ua, $url, $params, $decoded, $timeout, $interval ) = @_;
+    my $transaction_id = $decoded->{detail}{transaction_id};
 
-    my $poll_url = $url;
-    $poll_url =~ s{/validate/check$}{/validate/polltransaction};
+    # Guard against blank / non-numeric config values (e.g. POLL_TIMEOUT="").
+    $timeout  = 60 if ( !defined($timeout)  || $timeout  !~ /^\d*\.?\d+$/ || $timeout  <= 0 );
+    $interval = 3  if ( !defined($interval) || $interval !~ /^\d*\.?\d+$/ || $interval <= 0 );
+
+    my $poll_url = poll_url( $url );
+    if ( $poll_url eq $url ) {
+        &radiusd::radlog( Error, "Could not derive polltransaction URL from '$url' (expected a /validate/check suffix); polling may target the wrong endpoint" );
+    }
 
     my $coder = JSON->new->ascii->pretty->allow_nonref;
-    my $waited = 0;
-    $interval = 1 if ( !$interval || $interval <= 0 );
+    # transaction_id goes into a GET query string, so URL-encode it.
+    my $uri = URI::Encode->new( { encode_reserved => 1 } );
+    my $tx_enc = $uri->encode( $transaction_id );
 
+    # Budget on wall-clock time (includes HTTP time), not just accumulated sleeps,
+    # so the worker is never held much longer than $timeout.
+    my $start = [gettimeofday];
     &radiusd::radlog( Info, "Push token: polling transaction $transaction_id for up to $timeout seconds" );
 
-    while ( $waited < $timeout ) {
-        my $resp = $ua->get( "$poll_url?transaction_id=$transaction_id" );
+    while ( tv_interval($start) < $timeout ) {
+        my $resp = $ua->get( "$poll_url?transaction_id=$tx_enc" );
         if ( $resp->is_success ) {
             my $pdec = eval { $coder->decode( $resp->decoded_content ) };
             if ( $pdec ) {
@@ -407,15 +428,18 @@ sub poll_push {
         } else {
             &radiusd::radlog( Info, "polltransaction request failed: ". $resp->status_line );
         }
+        # Don't sleep if another interval would blow the budget (no trailing wait).
+        last if ( tv_interval($start) + $interval >= $timeout );
         sleep( $interval );
-        $waited += $interval;
     }
 
     # Timed out. Fall back to an Access-Challenge so the transaction can still be
-    # completed on a subsequent request (e.g. a client that re-submits).
+    # completed on a subsequent request (e.g. a client that re-submits). Include
+    # the mapped reply attributes, matching the normal challenge path.
     &radiusd::radlog( Info, "Push not confirmed within $timeout seconds, issuing challenge" );
     $RAD_REPLY{'State'} = $transaction_id;
     $RAD_CHECK{'Response-Packet-Type'} = "Access-Challenge";
+    %RAD_REPLY = ( %RAD_REPLY, mapResponse($decoded) );
     return RLM_MODULE_HANDLED;
 }
 
@@ -425,16 +449,30 @@ sub finalize_transaction {
     my ( $ua, $url, $params, $transaction_id ) = @_;
 
     my $coder = JSON->new->ascii->pretty->allow_nonref;
-    # $params->{user} is already URL-encoded (as in the main request path).
-    my %fin = (
-        user           => $params->{user},
-        transaction_id => $transaction_id,
-        pass           => "",
-    );
+    # Reuse the original request params (user, realm, resConf, client, ...) so the
+    # transaction resolves in the same realm; just send an empty pass plus the
+    # transaction_id to complete the challenge.
+    my %fin = %{$params};
+    $fin{pass}           = "";
+    $fin{transaction_id} = $transaction_id;
+    delete $fin{state};
 
     my $resp = $ua->post( $url, \%fin );
+    if ( !$resp->is_success ) {
+        # Transient/transport error after a confirmed push: soft-fail (like the
+        # main flow) rather than hard-denying an already-confirmed user.
+        my $status = $resp->status_line;
+        &radiusd::radlog( Info, "privacyIDEA push finalize failed: $status" );
+        $RAD_REPLY{'Reply-Message'} = "privacyIDEA request failed: $status";
+        return RLM_MODULE_FAIL;
+    }
     my $fdec = eval { $coder->decode( $resp->decoded_content ) };
-    if ( $fdec && $fdec->{result}{value} ) {
+    if ( !$fdec ) {
+        &radiusd::radlog( Info, "Could not parse push finalize response" );
+        $RAD_REPLY{'Reply-Message'} = "Can not parse response from privacyIDEA.";
+        return RLM_MODULE_FAIL;
+    }
+    if ( $fdec->{result}{value} ) {
         &radiusd::radlog( Info, "privacyIDEA access granted (push) for $params->{user}" );
         $RAD_REPLY{'Reply-Message'} = "privacyIDEA access granted";
         %RAD_REPLY = ( %RAD_REPLY, mapResponse($fdec) );
@@ -723,13 +761,18 @@ sub authenticate {
             if ( $decoded->{detail}{transaction_id} ) {
                 my $transaction_id = $decoded->{detail}{transaction_id};
                 my $client_mode = $decoded->{detail}{client_mode} || "";
-                if ( $poll_enabled == true && $client_mode eq "poll" ) {
+                # Only poll for a genuine push *authentication* challenge. An
+                # enrollment-via-multichallenge push also has client_mode "poll"
+                # but carries a QR/link the client must see, so it must take the
+                # normal challenge path instead of being polled away.
+                if ( $poll_enabled == true && $client_mode eq "poll"
+                     && !$decoded->{detail}{enroll_via_multichallenge} ) {
                     ## Push token: poll privacyIDEA for confirmation instead of
                     ## returning an Access-Challenge. This avoids showing the user
                     ## an empty input field for a token that expects no input.
                     ## NOTE: this blocks the FreeRADIUS worker thread for up to
                     ## POLL_TIMEOUT seconds (see poll_push).
-                    $g_return = poll_push( $ua, $URL, \%params, $transaction_id,
+                    $g_return = poll_push( $ua, $URL, \%params, $decoded,
                                            $poll_timeout, $poll_interval );
                 } else {
                     ## we are in challenge response mode:

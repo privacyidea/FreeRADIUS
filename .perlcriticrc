@@ -1,12 +1,29 @@
 # Perl::Critic config for the privacyIDEA FreeRADIUS module.
-# severity 5 = report only the most serious issues (a pragmatic gate for a
-# legacy rlm_perl module). Raise the strictness (lower the number) over time.
-severity = 5
+# severity 4 = report severe + high-importance issues (lower = stricter). This is
+# a meaningful gate for new code; the exclusions below are policies that fire
+# ONLY on the module's pre-existing rlm_perl boilerplate, not on new logic.
+severity = 4
 
-# The following only fire on xlat() / detach(), which are verbatim upstream
-# rlm_perl example boilerplate (load + eval an external perl file). They are not
-# part of the privacyIDEA logic, so exclude the policies rather than rewrite the
-# example. Remove these exclusions if xlat() is ever cleaned up or dropped.
+# --- exclusions: each fires only on legacy/boilerplate, documented so a real
+#     new-code violation of a still-enabled policy fails the gate. ---
+
+# rlm_perl return codes are defined as `use constant RLM_MODULE_* => n;` (idiomatic
+# for this module) — 18 hits, all the constant block.
+[-ValuesAndExpressions::ProhibitConstantPragma]
+
+# The module is loaded by rlm_perl into package main and has no `package` line.
+[-Modules::RequireExplicitPackage]
+
+# Upstream rlm_perl example subs (xlat/detach/log_request_attributes) don't end
+# in an explicit return; new subs in this module do.
+[-Subroutines::RequireFinalReturn]
+
+# Legacy: module uses `use strict` but not `use warnings` at the top.
+[-TestingAndDebugging::RequireUseWarnings]
+
+# The following fire only on xlat(), verbatim upstream example code that loads and
+# evals an external perl file.
 [-InputOutput::ProhibitBarewordFileHandles]
 [-InputOutput::ProhibitTwoArgOpen]
+[-InputOutput::RequireBriefOpen]
 [-BuiltinFunctions::ProhibitStringyEval]

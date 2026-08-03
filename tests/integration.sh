@@ -30,13 +30,19 @@ if [ "$ready" -ne 1 ]; then
     echo "radiusd did not become ready"; $COMPOSE logs freeradius | tail -40; exit 2
 fi
 
+# Classify a radclient run. Defaults to "no-reply" so a hung/dead server is NOT
+# silently counted as a reject (which would false-green the reject assertion).
+verdict() {
+    echo "$1" | grep -q "Received Access-Accept"    && { echo "Access-Accept";    return; }
+    echo "$1" | grep -q "Received Access-Challenge"  && { echo "Access-Challenge"; return; }
+    echo "$1" | grep -q "Received Access-Reject"     && { echo "Access-Reject";    return; }
+    echo "no-reply"
+}
+
 run() { # name password expected
     local name="$1" pw="$2" want="$3" out got
-    out=$($COMPOSE exec -T freeradius sh -c \
-        "echo 'User-Name=alice,User-Password=$pw' | radclient -x -t 10 -r 1 127.0.0.1:1812 auth $SECRET" 2>&1)
-    got="Access-Reject"
-    echo "$out" | grep -q "Received Access-Accept"    && got="Access-Accept"
-    echo "$out" | grep -q "Received Access-Challenge"  && got="Access-Challenge"
+    out=$(rc "$pw")
+    got=$(verdict "$out")
     if [ "$got" = "$want" ]; then
         echo "PASS  $name ($pw -> $got)"
     else
@@ -44,9 +50,11 @@ run() { # name password expected
     fi
 }
 
-rc() { # helper: run radclient inside the container, echo full output
+rc() { # helper: run radclient inside the container, echo full output.
+    # Message-Authenticator=0x00 makes radclient sign the request (required when
+    # RADIUS_REQUIRE_MSG_AUTH=yes, the secure default).
     $COMPOSE exec -T freeradius sh -c \
-        "echo 'User-Name=alice,User-Password=$1${2:+,State=$2}' | radclient -x -t 10 -r 1 127.0.0.1:1812 auth $SECRET" 2>&1
+        "echo 'User-Name=alice,User-Password=$1${2:+,State=$2},Message-Authenticator=0x00' | radclient -x -t 10 -r 1 127.0.0.1:1812 auth $SECRET" 2>&1
 }
 
 run "simple accept" secret Access-Accept   # immediate value=true
