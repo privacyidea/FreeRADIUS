@@ -1,0 +1,29 @@
+name: Docker build & test
+
+on:
+  push:
+  pull_request:
+    branches:
+      - 'master'
+      - 'branch-*'
+
+permissions:
+  contents: read
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    name: "build + config-check + integration"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Build image
+        run: docker build --network=host -f docker/Dockerfile -t privacyidea-freeradius .
+
+      - name: Config check (freeradius -XC)
+        run: docker run --rm privacyidea-freeradius freeradius -XC -d /etc/raddb
+
+      - name: Integration test (radclient vs mock privacyIDEA)
+        run: bash tests/integration.sh

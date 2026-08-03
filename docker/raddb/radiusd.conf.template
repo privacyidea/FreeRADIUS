@@ -1,0 +1,35 @@
+# Rendered at container start by entrypoint.sh (envsubst).
+# Minimal, purpose-built radiusd.conf. Validated against FreeRADIUS 3.2.5.
+prefix = /usr
+libdir = /usr/lib/freeradius
+pidfile = /tmp/radiusd.pid
+
+log {
+    destination = stdout
+    level = info
+    auth = yes
+}
+
+# A polling push request occupies a worker for the duration of the wait, so size
+# the pool for the number of concurrent push authentications you expect
+# (RADIUS_MAX_SERVERS).
+thread pool {
+    start_servers = 5
+    max_servers = $RADIUS_MAX_SERVERS
+    min_spare_servers = 3
+    max_spare_servers = 10
+    max_requests_per_server = 0
+}
+
+modules {
+    $INCLUDE ${confdir}/mods-enabled/
+}
+
+instantiate {
+}
+
+# The env-driven default client, then any operator-supplied client files mounted
+# into clients.d/ (additional NAS devices, each with its own secret).
+$INCLUDE ${confdir}/clients.conf
+$INCLUDE ${confdir}/clients.d/
+$INCLUDE ${confdir}/sites-enabled/

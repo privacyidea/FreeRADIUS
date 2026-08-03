@@ -1,0 +1,40 @@
+# Local/dev + CI integration stack: the FreeRADIUS container talking to a mock
+# privacyIDEA. For real use, drop the mock and point PI_URL at your server.
+services:
+  privacyidea-mock:
+    image: python:3.12-slim
+    command: python /mock/mock_privacyidea.py 8080
+    volumes:
+      - ./docker/mock:/mock:ro
+
+  freeradius:
+    image: privacyidea-freeradius
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    # What each option means: see docker/README.md.
+    # Uncommented = this test stack's overrides (point at the mock);
+    # commented = the remaining options with their defaults.
+    environment:
+      PI_URL: http://privacyidea-mock:8080/validate/check
+      PI_SSL_CHECK: "false"        # default: "true"
+      PI_POLL: "true"              # default: "false"
+      PI_POLL_TIMEOUT: "10"        # default: "60"
+      PI_POLL_INTERVAL: "1"        # default: "3"
+      RADIUS_CLIENT_SECRET: testing123
+      RADIUS_CLIENT_NET: 0.0.0.0/0
+      # PI_REALM: ""
+      # PI_RESOLVER: ""
+      # PI_SSL_CA_PATH: ""
+      # PI_DEBUG: "false"
+      # PI_TIMEOUT: "10"
+      # PI_ADD_EMPTY_PASS: "false"
+      # PI_SPLIT_NULL_BYTE: "false"
+      # PI_CLIENTATTRIBUTE: ""
+      # RADIUS_REQUIRE_MSG_AUTH: "yes"   # BlastRADIUS mitigation; "auto"/"no" for legacy NAS
+      # RADIUS_MAX_SERVERS: "64"         # worker threads (raise for many concurrent polls)
+    ports:
+      - "1812:1812/udp"
+      - "1813:1813/udp"
+    depends_on:
+      - privacyidea-mock

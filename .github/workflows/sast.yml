@@ -1,0 +1,74 @@
+name: SAST
+
+on:
+  push:
+  pull_request:
+    branches:
+      - 'master'
+      - 'branch-*'
+
+permissions:
+  contents: read
+
+jobs:
+  actions-security:
+    runs-on: ubuntu-latest
+    name: "zizmor (workflows)"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: zizmor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: pipx run zizmor --persona regular .github/workflows/
+
+  perl-critic:
+    runs-on: ubuntu-latest
+    name: "perlcritic (module)"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: install Perl::Critic
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libperl-critic-perl
+      - name: perlcritic
+        run: perlcritic privacyidea_radius.pm
+
+  dockerfile-lint:
+    runs-on: ubuntu-latest
+    name: "hadolint (Dockerfile)"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: hadolint
+        run: docker run --rm -i -v "$PWD/.hadolint.yaml:/.config/hadolint.yaml:ro" hadolint/hadolint hadolint - < docker/Dockerfile
+
+  shell-lint:
+    runs-on: ubuntu-latest
+    name: "shellcheck (scripts)"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: shellcheck
+        # Pinned version via container so results are deterministic (the runner's
+        # preinstalled shellcheck version drifts and changes default findings).
+        run: docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:v0.10.0 docker/entrypoint.sh tests/integration.sh
+
+  image-scan:
+    runs-on: ubuntu-latest
+    name: "trivy (image CVEs)"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Build image
+        run: docker build --network=host -f docker/Dockerfile -t privacyidea-freeradius .
+      - name: Trivy image scan (fixable HIGH/CRITICAL only)
+        run: |
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image \
+            --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL --exit-code 1 \
+            privacyidea-freeradius
